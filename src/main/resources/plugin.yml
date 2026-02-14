@@ -1,0 +1,13 @@
+name: one_day_keizai
+version: '${project.version}'
+main: lobby.one_day_keizai.One_day_keizai
+api-version: '1.20'
+depend: [Vault]
+
+commands:
+  debt:
+    description: 債権管理コマンド
+    usage: /debt <lend|repay|forgive|list> [player] [amount] [minutes]
+  bal:
+    description: 残高確認
+    usage: /bal

@@ -1,0 +1,7 @@
+money-steal-ratio: 0.33
+innocent-kill-limit: 3
+respawn-protection-seconds: 600
+combat-logout-seconds: 30
+logout-grace-minutes: 15
+bed-logout-radius: 10
+bed-stay-seconds: 15

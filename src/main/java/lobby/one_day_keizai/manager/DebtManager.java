@@ -30,17 +30,20 @@ public class DebtManager {
         public UUID debtor;
         public double amount;
         public long deadline; // timestamp
+        public double interestRate; // 利率（%）
 
-        public Debt(UUID creditor, UUID debtor, double amount, long deadline) {
+        public Debt(UUID creditor, UUID debtor, double amount, long deadline, double interestRate) {
             this.creditor = creditor;
             this.debtor = debtor;
             this.amount = amount;
             this.deadline = deadline;
+            this.interestRate = interestRate;
         }
     }
 
-    public void addDebt(UUID creditor, UUID debtor, double amount, long deadlineTimestamp) {
-        debts.add(new Debt(creditor, debtor, amount, deadlineTimestamp));
+    public void addDebt(UUID creditor, UUID debtor, double amount, long deadlineTimestamp, double interestRate) {
+        double totalAmount = amount * (1 + interestRate / 100.0);
+        debts.add(new Debt(creditor, debtor, totalAmount, deadlineTimestamp, interestRate));
         saveDebts();
     }
 
@@ -160,6 +163,7 @@ public class DebtManager {
             map.put("debtor", debt.debtor.toString());
             map.put("amount", debt.amount);
             map.put("deadline", debt.deadline);
+            map.put("interestRate", debt.interestRate);
             list.add(map);
         }
         dataManager.saveDebts(list);
@@ -173,7 +177,8 @@ public class DebtManager {
             UUID debtor = UUID.fromString((String) map.get("debtor"));
             double amount = ((Number) map.get("amount")).doubleValue();
             long deadline = ((Number) map.get("deadline")).longValue();
-            debts.add(new Debt(creditor, debtor, amount, deadline));
+            double interestRate = map.containsKey("interestRate") ? ((Number) map.get("interestRate")).doubleValue() : 0;
+            debts.add(new Debt(creditor, debtor, amount, deadline, interestRate));
         }
     }
 }

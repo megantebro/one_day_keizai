@@ -50,7 +50,7 @@ public class DebtCommand implements CommandExecutor, TabCompleter {
 
     private void handleLend(Player lender, String[] args) {
         if (args.length < 4) {
-            lender.sendMessage(ChatColor.RED + "使い方: /debt lend <プレイヤー> <金額> <期限(分)>");
+            lender.sendMessage(ChatColor.RED + "使い方: /debt lend <プレイヤー> <金額> <期限(分)> [利率%]");
             return;
         }
 
@@ -67,16 +67,25 @@ public class DebtCommand implements CommandExecutor, TabCompleter {
 
         double amount;
         int minutes;
+        double interestRate = 0;
         try {
             amount = Double.parseDouble(args[2]);
             minutes = Integer.parseInt(args[3]);
+            if (args.length >= 5) {
+                interestRate = Double.parseDouble(args[4]);
+            }
         } catch (NumberFormatException e) {
-            lender.sendMessage(ChatColor.RED + "金額と期限は数値で入力してください。");
+            lender.sendMessage(ChatColor.RED + "金額・期限・利率は数値で入力してください。");
             return;
         }
 
         if (amount <= 0 || minutes <= 0) {
             lender.sendMessage(ChatColor.RED + "金額と期限は正の数で入力してください。");
+            return;
+        }
+
+        if (interestRate < 0) {
+            lender.sendMessage(ChatColor.RED + "利率は0以上で入力してください。");
             return;
         }
 
@@ -86,18 +95,22 @@ public class DebtCommand implements CommandExecutor, TabCompleter {
             return;
         }
 
-        // 金銭移動
+        // 金銭移動（元金のみ送金）
         economy.withdrawPlayer(lender, amount);
         economy.depositPlayer(borrower, amount);
 
-        // 債権登録
+        // 債権登録（利子込みの返済額で記録）
         long deadline = System.currentTimeMillis() + (minutes * 60 * 1000L);
-        debtManager.addDebt(lender.getUniqueId(), borrower.getUniqueId(), amount, deadline);
+        debtManager.addDebt(lender.getUniqueId(), borrower.getUniqueId(), amount, deadline, interestRate);
+
+        double totalRepayment = amount * (1 + interestRate / 100.0);
+        String interestInfo = interestRate > 0 ?
+                "、利率: " + String.format("%.1f", interestRate) + "%、返済額: " + String.format("%.0f", totalRepayment) : "";
 
         lender.sendMessage(ChatColor.GOLD + borrower.getName() + " に " +
-                String.format("%.0f", amount) + " を貸しました（期限: " + minutes + "分）。");
+                String.format("%.0f", amount) + " を貸しました（期限: " + minutes + "分" + interestInfo + "）。");
         borrower.sendMessage(ChatColor.GOLD + lender.getName() + " から " +
-                String.format("%.0f", amount) + " を借りました（期限: " + minutes + "分）。");
+                String.format("%.0f", amount) + " を借りました（期限: " + minutes + "分" + interestInfo + "）。");
     }
 
     private void handleRepay(Player debtor, String[] args) {
@@ -188,23 +201,26 @@ public class DebtCommand implements CommandExecutor, TabCompleter {
             String remaining = remainingMs > 0 ?
                     String.format("%d分", remainingMs / 60000) : "期限切れ";
 
+            String interestInfo = debt.interestRate > 0 ?
+                    " 利率:" + String.format("%.1f", debt.interestRate) + "%" : "";
+
             if (debt.creditor.equals(player.getUniqueId())) {
                 String debtorName = Bukkit.getOfflinePlayer(debt.debtor).getName();
                 player.sendMessage(ChatColor.GREEN + "  [貸] " + debtorName +
                         " へ " + String.format("%.0f", debt.amount) +
-                        " (残り: " + remaining + ")");
+                        interestInfo + " (残り: " + remaining + ")");
             } else {
                 String creditorName = Bukkit.getOfflinePlayer(debt.creditor).getName();
                 player.sendMessage(ChatColor.RED + "  [借] " + creditorName +
                         " から " + String.format("%.0f", debt.amount) +
-                        " (残り: " + remaining + ")");
+                        interestInfo + " (残り: " + remaining + ")");
             }
         }
     }
 
     private void sendUsage(Player player) {
         player.sendMessage(ChatColor.YELLOW + "使い方:");
-        player.sendMessage(ChatColor.YELLOW + "  /debt lend <プレイヤー> <金額> <期限(分)> - お金を貸す");
+        player.sendMessage(ChatColor.YELLOW + "  /debt lend <プレイヤー> <金額> <期限(分)> [利率%] - お金を貸す");
         player.sendMessage(ChatColor.YELLOW + "  /debt repay <債権者> <金額> - 返済する");
         player.sendMessage(ChatColor.YELLOW + "  /debt forgive <債務者> - 債務を許す");
         player.sendMessage(ChatColor.YELLOW + "  /debt list - 一覧表示");

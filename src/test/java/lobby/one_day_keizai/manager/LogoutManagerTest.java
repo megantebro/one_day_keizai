@@ -113,6 +113,35 @@ class LogoutManagerTest {
     // handleLogin テスト
     // =========================================
 
+    // =========================================
+    // 戦闘ログアウト テスト
+    // =========================================
+
+    @Test
+    void combatLogout_doesNotIncrementInnocentKillCount() {
+        UUID attackerId = UUID.randomUUID();
+        Player attacker = mock(Player.class);
+
+        when(combatManager.isInCombat(playerId)).thenReturn(true);
+        when(combatManager.getLastAttacker(playerId)).thenReturn(attackerId);
+        when(economy.getBalance(player)).thenReturn(1000.0);
+        when(player.getServer()).thenReturn(mock(org.bukkit.Server.class));
+        when(player.getServer().getPlayer(attackerId)).thenReturn(attacker);
+
+        logoutManager.handleLogout(player);
+
+        // 金銭奪取は行われる
+        verify(economy).withdrawPlayer(player, 330.0);
+        verify(economy).depositPlayer(attacker, 330.0);
+
+        // 無実キルカウントは増加しない（悪用防止）
+        verify(criminalManager, never()).incrementInnocentKill(any());
+    }
+
+    // =========================================
+    // handleLogin テスト
+    // =========================================
+
     @Test
     void handleLogin_noPenaltyData_doesNothing() {
         when(dataManager.hasLogoutPenaltyData(playerId)).thenReturn(false);
@@ -137,14 +166,14 @@ class LogoutManagerTest {
     }
 
     @Test
-    void handleLogin_graceExpired_clearsInventory() {
+    void handleLogin_graceExpired_killsPlayer() {
         when(dataManager.hasLogoutPenaltyData(playerId)).thenReturn(true);
         when(dataManager.getLogoutPenaltyDeadline(playerId))
                 .thenReturn(System.currentTimeMillis() - 1000);
 
         logoutManager.handleLogin(player);
 
-        verify(inventory).clear();
+        verify(player).setHealth(0);
         verify(dataManager).clearLogoutPenaltyData(playerId);
         verify(dataManager).save();
     }

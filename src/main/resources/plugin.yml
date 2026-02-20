@@ -11,3 +11,6 @@ commands:
   bal:
     description: 残高確認
     usage: /bal
+  auction:
+    description: オークション入札
+    usage: /auction <金額>

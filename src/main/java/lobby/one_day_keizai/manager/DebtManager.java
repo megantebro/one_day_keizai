@@ -41,6 +41,10 @@ public class DebtManager {
         }
     }
 
+    public void addDebt(UUID creditor, UUID debtor, double amount, long deadlineTimestamp) {
+        addDebt(creditor, debtor, amount, deadlineTimestamp, 0);
+    }
+
     public void addDebt(UUID creditor, UUID debtor, double amount, long deadlineTimestamp, double interestRate) {
         double totalAmount = amount * (1 + interestRate / 100.0);
         debts.add(new Debt(creditor, debtor, totalAmount, deadlineTimestamp, interestRate));

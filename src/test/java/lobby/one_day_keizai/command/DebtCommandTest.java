@@ -127,7 +127,7 @@ class DebtCommandTest {
 
         verify(economy).withdrawPlayer(sender, 500.0);
         verify(economy).depositPlayer(target, 500.0);
-        verify(debtManager).addDebt(eq(senderId), eq(targetId), eq(500.0), anyLong());
+        verify(debtManager).addDebt(eq(senderId), eq(targetId), eq(500.0), anyLong(), eq(0.0));
     }
 
     // =========================================

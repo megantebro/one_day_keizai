@@ -5,3 +5,5 @@ combat-logout-seconds: 30
 logout-grace-minutes: 15
 bed-logout-radius: 5
 bed-stay-seconds: 15
+auction-interval-minutes: 30
+auction-duration-seconds: 120

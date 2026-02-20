@@ -1,5 +1,6 @@
 package lobby.one_day_keizai;
 
+import lobby.one_day_keizai.command.AuctionCommand;
 import lobby.one_day_keizai.command.BalanceCommand;
 import lobby.one_day_keizai.command.DebtCommand;
 import lobby.one_day_keizai.data.PlayerDataManager;
@@ -39,6 +40,8 @@ public final class One_day_keizai extends JavaPlugin {
         int logoutGraceMinutes = getConfig().getInt("logout-grace-minutes", 15);
         int bedLogoutRadius = getConfig().getInt("bed-logout-radius", 10);
         int bedStaySeconds = getConfig().getInt("bed-stay-seconds", 15);
+        int auctionIntervalMinutes = getConfig().getInt("auction-interval-minutes", 30);
+        int auctionDurationSeconds = getConfig().getInt("auction-duration-seconds", 120);
 
         // データ管理
         playerDataManager = new PlayerDataManager(this);
@@ -53,6 +56,8 @@ public final class One_day_keizai extends JavaPlugin {
         LogoutManager logoutManager = new LogoutManager(
                 this, playerDataManager, combatManager, criminalManager, nametagManager,
                 economy, bedLogoutRadius, logoutGraceMinutes, moneyStealRatio, bedStaySeconds);
+        AuctionManager auctionManager = new AuctionManager(
+                this, economy, auctionIntervalMinutes, auctionDurationSeconds);
 
         // リスナー登録
         Bukkit.getPluginManager().registerEvents(
@@ -66,12 +71,18 @@ public final class One_day_keizai extends JavaPlugin {
         getCommand("debt").setExecutor(new DebtCommand(debtManager, economy));
         getCommand("debt").setTabCompleter((DebtCommand) getCommand("debt").getExecutor());
         getCommand("bal").setExecutor(new BalanceCommand(economy));
+        AuctionCommand auctionCommand = new AuctionCommand(auctionManager);
+        getCommand("auction").setExecutor(auctionCommand);
+        getCommand("auction").setTabCompleter(auctionCommand);
 
         // ベッド付近滞在トラッカー開始
         logoutManager.startBedProximityTracker();
 
         // 債権期限チェッカー開始
         debtManager.startDeadlineChecker();
+
+        // オークションスケジューラー開始
+        auctionManager.startAuctionScheduler();
 
         // 定期自動保存（5分ごと）
         Bukkit.getScheduler().runTaskTimer(this, () -> playerDataManager.save(), 20L * 300, 20L * 300);

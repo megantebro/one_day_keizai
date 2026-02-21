@@ -109,13 +109,32 @@ class PvPListenerTest {
     // =========================================
 
     @Test
-    void onDeath_noKiller_doesNothing() {
+    void onDeath_noKiller_nonCriminal_losesMoneyOnly() {
         PlayerDeathEvent event = createDeathEvent(null);
+        when(criminalManager.isCriminal(victimId)).thenReturn(false);
+        when(economy.getBalance(victim)).thenReturn(3000.0);
 
         pvpListener.onPlayerDeath(event);
 
-        verifyNoInteractions(economy);
+        // 所持金の33%が没収される
+        verify(economy).withdrawPlayer(victim, 990.0);
+        // アイテムは保持
+        assertTrue(event.getKeepInventory());
+        assertTrue(event.getKeepLevel());
         verifyNoInteractions(combatManager);
+    }
+
+    @Test
+    void onDeath_noKiller_criminal_losesItems() {
+        PlayerDeathEvent event = createDeathEvent(null);
+        when(criminalManager.isCriminal(victimId)).thenReturn(true);
+
+        pvpListener.onPlayerDeath(event);
+
+        // 罪人はアイテム全ドロップ、金銭没収なし
+        assertFalse(event.getKeepInventory());
+        assertFalse(event.getKeepLevel());
+        verify(economy, never()).withdrawPlayer(any(Player.class), anyDouble());
     }
 
     @Test
@@ -140,9 +159,6 @@ class PvPListenerTest {
         when(economy.getBalance(victim)).thenReturn(0.0);
         when(debtManager.isDebtor(victimId)).thenReturn(false);
         when(criminalManager.isCriminal(victimId)).thenReturn(true);
-        when(combatManager.isInnocentKill(killerId, victimId)).thenReturn(true);
-        when(criminalManager.incrementInnocentKill(killerId)).thenReturn(false);
-        when(criminalManager.getInnocentKillCount(killerId)).thenReturn(1);
 
         pvpListener.onPlayerDeath(event);
 

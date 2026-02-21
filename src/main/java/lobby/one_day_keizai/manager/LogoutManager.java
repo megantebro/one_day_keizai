@@ -165,6 +165,7 @@ public class LogoutManager {
             double victimBalance = economy.getBalance(victim);
             double stolenAmount = victimBalance * moneyStealRatio;
             if (stolenAmount > 0) {
+                victim.setHealth(0);
                 economy.withdrawPlayer(victim, stolenAmount);
                 if (attacker != null) {
                     economy.depositPlayer(attacker, stolenAmount);
@@ -217,9 +218,21 @@ public class LogoutManager {
         long deadline = dataManager.getLogoutPenaltyDeadline(uuid);
 
         if (System.currentTimeMillis() > deadline) {
-            // 猶予期間切れ → 死亡
-            player.setHealth(0);
-            player.sendMessage(ChatColor.DARK_RED + "ログアウトペナルティ：猶予期間が過ぎたため死亡しました。");
+            if (criminalManager.isCriminal(uuid)) {
+                // 罪人は死亡（アイテムロスト）
+                player.setHealth(0);
+                player.sendMessage(ChatColor.DARK_RED + "ログアウトペナルティ：猶予期間が過ぎたため死亡しました。");
+            } else {
+                // 罪人以外は所持金の3割没収
+                double balance = economy.getBalance(player);
+                double penalty = balance * moneyStealRatio;
+                if (penalty > 0) {
+                    economy.withdrawPlayer(player, penalty);
+                }
+                player.sendMessage(ChatColor.RED + "ログアウトペナルティ：所持金の"
+                        + String.format("%.0f%%", moneyStealRatio * 100) + "（"
+                        + String.format("%.0f", penalty) + "）を失いました。");
+            }
         } else {
             player.sendMessage(ChatColor.GREEN + "猶予期間内にログインしました。アイテムは保持されます。");
         }

@@ -159,14 +159,29 @@ public class AuctionManager {
             return;
         }
 
-        // 最高額入札者を決定
+        // 入札額の高い順にソート
+        List<Map.Entry<UUID, Double>> sortedBids = new ArrayList<>(bids.entrySet());
+        sortedBids.sort(Map.Entry.<UUID, Double>comparingByValue().reversed());
+
+        // 残高が足りる入札者を上位から探す
         UUID winnerId = null;
-        double highestBid = 0;
-        for (Map.Entry<UUID, Double> entry : bids.entrySet()) {
-            if (entry.getValue() > highestBid) {
-                highestBid = entry.getValue();
+        double winningBid = 0;
+        for (Map.Entry<UUID, Double> entry : sortedBids) {
+            double balance = economy.getBalance(Bukkit.getOfflinePlayer(entry.getKey()));
+            if (balance >= entry.getValue()) {
                 winnerId = entry.getKey();
+                winningBid = entry.getValue();
+                break;
             }
+        }
+
+        if (winnerId == null) {
+            Bukkit.broadcastMessage(ChatColor.GOLD + "=============================");
+            Bukkit.broadcastMessage(ChatColor.YELLOW + "  オークション終了 — 残高不足により落札者なし");
+            Bukkit.broadcastMessage(ChatColor.GOLD + "=============================");
+            currentItem = null;
+            currentItemName = null;
+            return;
         }
 
         Player winner = Bukkit.getPlayer(winnerId);
@@ -174,13 +189,13 @@ public class AuctionManager {
                 Bukkit.getOfflinePlayer(winnerId).getName();
 
         // お金を引き落とし
-        economy.withdrawPlayer(Bukkit.getOfflinePlayer(winnerId), highestBid);
+        economy.withdrawPlayer(Bukkit.getOfflinePlayer(winnerId), winningBid);
 
         // アイテム付与
         if (winner != null && winner.isOnline()) {
             giveItem(winner, currentItem);
             winner.sendMessage(ChatColor.GREEN + "オークションで " + currentItemName +
-                    " を " + String.format("%.0f", highestBid) + "円で落札しました！");
+                    " を " + String.format("%.0f", winningBid) + "円で落札しました！");
         }
 
         Bukkit.broadcastMessage(ChatColor.GOLD + "=============================");
@@ -188,7 +203,7 @@ public class AuctionManager {
         Bukkit.broadcastMessage(ChatColor.YELLOW + "  落札者: " + ChatColor.WHITE + winnerName);
         Bukkit.broadcastMessage(ChatColor.YELLOW + "  アイテム: " + ChatColor.WHITE + currentItemName);
         Bukkit.broadcastMessage(ChatColor.YELLOW + "  落札額: " + ChatColor.WHITE +
-                String.format("%.0f", highestBid) + "円");
+                String.format("%.0f", winningBid) + "円");
         Bukkit.broadcastMessage(ChatColor.GOLD + "=============================");
 
         currentItem = null;

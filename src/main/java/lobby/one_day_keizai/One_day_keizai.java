@@ -58,6 +58,7 @@ public final class One_day_keizai extends JavaPlugin {
                 economy, bedLogoutRadius, logoutGraceMinutes, moneyStealRatio, bedStaySeconds);
         AuctionManager auctionManager = new AuctionManager(
                 this, economy, auctionIntervalMinutes, auctionDurationSeconds);
+        BalanceScoreboardManager balanceScoreboardManager = new BalanceScoreboardManager(this, economy);
 
         // リスナー登録
         Bukkit.getPluginManager().registerEvents(
@@ -83,6 +84,9 @@ public final class One_day_keizai extends JavaPlugin {
 
         // オークションスケジューラー開始
         auctionManager.startAuctionScheduler();
+
+        // Balance Top スコアボード開始
+        balanceScoreboardManager.startUpdater();
 
         // 定期自動保存（5分ごと）
         Bukkit.getScheduler().runTaskTimer(this, () -> playerDataManager.save(), 20L * 300, 20L * 300);

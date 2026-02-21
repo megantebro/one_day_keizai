@@ -4,6 +4,7 @@ import lobby.one_day_keizai.manager.*;
 import net.milkbowl.vault.economy.Economy;
 import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.Projectile;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
@@ -37,7 +38,16 @@ public class PvPListener implements Listener {
     @EventHandler(priority = EventPriority.HIGH)
     public void onEntityDamageByEntity(EntityDamageByEntityEvent event) {
         if (!(event.getEntity() instanceof Player victim)) return;
-        if (!(event.getDamager() instanceof Player attacker)) return;
+
+        Player attacker;
+        if (event.getDamager() instanceof Player p) {
+            attacker = p;
+        } else if (event.getDamager() instanceof Projectile proj
+                && proj.getShooter() instanceof Player p) {
+            attacker = p;
+        } else {
+            return;
+        }
 
         UUID victimId = victim.getUniqueId();
         UUID attackerId = attacker.getUniqueId();
@@ -61,11 +71,37 @@ public class PvPListener implements Listener {
     @EventHandler(priority = EventPriority.HIGH)
     public void onPlayerDeath(PlayerDeathEvent event) {
         Player victim = event.getEntity();
-        Player killer = victim.getKiller();
-
-        if (killer == null) return;
-
         UUID victimId = victim.getUniqueId();
+
+        // --- 罪人判定: アイテムドロップ（全死因共通）---
+        if (criminalManager.isCriminal(victimId)) {
+            // 罪人はアイテム全ドロップ
+            event.setKeepInventory(false);
+            event.setKeepLevel(false);
+        } else {
+            // 非罪人はアイテム保持
+            event.setKeepInventory(true);
+            event.setKeepLevel(true);
+            event.getDrops().clear();
+            event.setDroppedExp(0);
+        }
+
+        Player killer = victim.getKiller();
+        if (killer == null) {
+            // --- PvP以外の死亡：非罪人は所持金の3割没収 ---
+            if (!criminalManager.isCriminal(victimId)) {
+                double balance = economy.getBalance(victim);
+                double penalty = balance * moneyStealRatio;
+                if (penalty > 0) {
+                    economy.withdrawPlayer(victim, penalty);
+                }
+                victim.sendMessage(ChatColor.RED + "所持金の"
+                        + String.format("%.0f%%", moneyStealRatio * 100) + "（"
+                        + String.format("%.0f", penalty) + "）を失いました。");
+            }
+            return;
+        }
+
         UUID killerId = killer.getUniqueId();
 
         // --- 債務者の死亡時特殊処理 ---
@@ -83,21 +119,8 @@ public class PvPListener implements Listener {
             }
         }
 
-        // --- 罪人判定: アイテムドロップ ---
-        if (criminalManager.isCriminal(victimId)) {
-            // 罪人はアイテム全ドロップ
-            event.setKeepInventory(false);
-            event.setKeepLevel(false);
-        } else {
-            // 非罪人はアイテム保持
-            event.setKeepInventory(true);
-            event.setKeepLevel(true);
-            event.getDrops().clear();
-            event.setDroppedExp(0);
-        }
-
-        // --- 正当防衛チェック & 罪人カウント ---
-        if (combatManager.isInnocentKill(killerId, victimId)) {
+        // --- 正当防衛チェック & 罪人カウント（罪人を殺した場合はカウントしない）---
+        if (!criminalManager.isCriminal(victimId) && combatManager.isInnocentKill(killerId, victimId)) {
             boolean becameCriminal = criminalManager.incrementInnocentKill(killerId);
             if (becameCriminal) {
                 killer.sendMessage(ChatColor.DARK_RED + "あなたは罪人になりました！");

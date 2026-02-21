@@ -2,6 +2,7 @@ package lobby.one_day_keizai.manager;
 
 import lobby.one_day_keizai.data.PlayerDataManager;
 import net.milkbowl.vault.economy.Economy;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
@@ -11,6 +12,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.UUID;
@@ -125,17 +127,19 @@ class LogoutManagerTest {
         when(combatManager.isInCombat(playerId)).thenReturn(true);
         when(combatManager.getLastAttacker(playerId)).thenReturn(attackerId);
         when(economy.getBalance(player)).thenReturn(1000.0);
-        when(player.getServer()).thenReturn(mock(org.bukkit.Server.class));
-        when(player.getServer().getPlayer(attackerId)).thenReturn(attacker);
 
-        logoutManager.handleLogout(player);
+        try (MockedStatic<Bukkit> bukkit = mockStatic(Bukkit.class)) {
+            bukkit.when(() -> Bukkit.getPlayer(attackerId)).thenReturn(attacker);
 
-        // 金銭奪取は行われる
-        verify(economy).withdrawPlayer(player, 330.0);
-        verify(economy).depositPlayer(attacker, 330.0);
+            logoutManager.handleLogout(player);
 
-        // 無実キルカウントは増加しない（悪用防止）
-        verify(criminalManager, never()).incrementInnocentKill(any());
+            // 金銭奪取は行われる
+            verify(economy).withdrawPlayer(player, 330.0);
+            verify(economy).depositPlayer(attacker, 330.0);
+
+            // 無実キルカウントは増加しない（悪用防止）
+            verify(criminalManager, never()).incrementInnocentKill(any());
+        }
     }
 
     // =========================================
@@ -166,14 +170,34 @@ class LogoutManagerTest {
     }
 
     @Test
-    void handleLogin_graceExpired_killsPlayer() {
+    void handleLogin_graceExpired_criminal_killsPlayer() {
         when(dataManager.hasLogoutPenaltyData(playerId)).thenReturn(true);
         when(dataManager.getLogoutPenaltyDeadline(playerId))
                 .thenReturn(System.currentTimeMillis() - 1000);
+        when(criminalManager.isCriminal(playerId)).thenReturn(true);
 
         logoutManager.handleLogin(player);
 
         verify(player).setHealth(0);
+        verify(economy, never()).withdrawPlayer(eq(player), anyDouble());
+        verify(dataManager).clearLogoutPenaltyData(playerId);
+        verify(dataManager).save();
+    }
+
+    @Test
+    void handleLogin_graceExpired_nonCriminal_losesMoneyOnly() {
+        when(dataManager.hasLogoutPenaltyData(playerId)).thenReturn(true);
+        when(dataManager.getLogoutPenaltyDeadline(playerId))
+                .thenReturn(System.currentTimeMillis() - 1000);
+        when(criminalManager.isCriminal(playerId)).thenReturn(false);
+        when(economy.getBalance(player)).thenReturn(1000.0);
+
+        logoutManager.handleLogin(player);
+
+        // 死亡しない
+        verify(player, never()).setHealth(0);
+        // 所持金の33%が没収される
+        verify(economy).withdrawPlayer(player, 330.0);
         verify(dataManager).clearLogoutPenaltyData(playerId);
         verify(dataManager).save();
     }

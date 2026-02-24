@@ -81,6 +81,10 @@ public class DebtCommand implements CommandExecutor, TabCompleter {
             return;
         }
 
+        // 60秒以上経過した古いリクエストを自動削除
+        pendingRequests.entrySet().removeIf(e ->
+                System.currentTimeMillis() - e.getValue().createdAt > 60_000);
+
         Player borrower = Bukkit.getPlayer(args[1]);
         if (borrower == null) {
             lender.sendMessage(ChatColor.RED + "プレイヤーが見つかりません: " + args[1]);

@@ -26,6 +26,10 @@ public class CriminalManager {
         return dataManager.getInnocentKillCount(uuid);
     }
 
+    public int getInnocentKillLimit() {
+        return innocentKillLimit;
+    }
+
     /**
      * 無実キルカウントを1増やし、上限に達したら罪人化する。
      * @return 罪人化した場合true

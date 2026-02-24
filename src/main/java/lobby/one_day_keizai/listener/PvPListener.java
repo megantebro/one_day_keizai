@@ -148,8 +148,7 @@ public class PvPListener implements Listener {
                 nametagManager.setCriminal(killer);
             } else {
                 int count = criminalManager.getInnocentKillCount(killerId);
-                int limit = 3; // config value
-                killer.sendMessage(ChatColor.YELLOW + "無実キル: " + count + "/" + limit);
+                killer.sendMessage(ChatColor.YELLOW + "無実キル: " + count + "/" + criminalManager.getInnocentKillLimit());
             }
         }
 

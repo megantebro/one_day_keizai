@@ -107,6 +107,50 @@ class AuctionManagerTest {
         assertEquals(List.of("ダイヤ"), auctionManager.getItemPoolNames());
     }
 
+    // --- addItem / removeItem ---
+
+    @Test
+    void addItem_withName_addsToPool() {
+        int before = auctionManager.getItemPool().size();
+        ItemStack diamond = new ItemStack(Material.DIAMOND, 5);
+        int index = auctionManager.addItem(diamond, "ダイヤ x5");
+        assertEquals(before + 1, auctionManager.getItemPool().size());
+        assertEquals(before + 1, index);
+        assertTrue(auctionManager.getItemPoolNames().contains("ダイヤ x5"));
+    }
+
+    @Test
+    void addItem_withoutName_autoGeneratesName() {
+        ItemStack gold = new ItemStack(Material.GOLD_INGOT, 1);
+        auctionManager.addItem(gold, null);
+        List<String> names = auctionManager.getItemPoolNames();
+        // 自動生成名は material を小文字スネークケースに変換したもの
+        assertTrue(names.get(names.size() - 1).contains("gold"));
+    }
+
+    @Test
+    void removeItem_validIndex_removesFromPool() {
+        int before = auctionManager.getItemPool().size();
+        String removed = auctionManager.removeItem(1);
+        assertNotNull(removed);
+        assertEquals(before - 1, auctionManager.getItemPool().size());
+    }
+
+    @Test
+    void removeItem_outOfRange_returnsNull() {
+        assertNull(auctionManager.removeItem(0));
+        assertNull(auctionManager.removeItem(9999));
+    }
+
+    @Test
+    void addThenRemove_restoresOriginalSize() {
+        int original = auctionManager.getItemPool().size();
+        auctionManager.addItem(new ItemStack(Material.DIAMOND, 1), "test");
+        assertEquals(original + 1, auctionManager.getItemPool().size());
+        auctionManager.removeItem(original + 1);
+        assertEquals(original, auctionManager.getItemPool().size());
+    }
+
     // --- startAuction ---
 
     @Test

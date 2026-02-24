@@ -336,6 +336,63 @@ public class AuctionManager {
         return Collections.unmodifiableMap(bids);
     }
 
+    /**
+     * アイテムをプールに追加し、config.yml に保存する。
+     * @param item        追加するアイテム
+     * @param displayName 表示名（nullの場合はマテリアル名から自動生成）
+     * @return 追加後のプール内インデックス（1始まり）
+     */
+    public int addItem(ItemStack item, String displayName) {
+        if (displayName == null || displayName.isBlank()) {
+            displayName = item.getType().name().toLowerCase().replace('_', ' ');
+        }
+        itemPool.add(new AuctionItem(item.clone(), displayName));
+        saveItemPoolToConfig();
+        return itemPool.size();
+    }
+
+    /**
+     * インデックス（1始まり）でアイテムをプールから削除し、config.yml に保存する。
+     * @return 削除したアイテムの表示名、範囲外の場合は null
+     */
+    public String removeItem(int index) {
+        if (index < 1 || index > itemPool.size()) return null;
+        AuctionItem removed = itemPool.remove(index - 1);
+        saveItemPoolToConfig();
+        return removed.name;
+    }
+
+    /**
+     * 現在のアイテムプールを config.yml の auction-items セクションに書き出す。
+     */
+    public void saveItemPoolToConfig() {
+        List<Map<String, Object>> list = new ArrayList<>();
+        for (AuctionItem auctionItem : itemPool) {
+            Map<String, Object> entry = new LinkedHashMap<>();
+            Material mat = auctionItem.item.getType();
+            if (mat == null) continue; // 不正なアイテムはスキップ
+            entry.put("material", mat.name());
+            entry.put("amount", auctionItem.item.getAmount());
+            entry.put("name", auctionItem.name);
+
+            // エンチャント本の場合はエンチャント情報も保存
+            if (auctionItem.item.getType() == Material.ENCHANTED_BOOK
+                    && auctionItem.item.getItemMeta() instanceof EnchantmentStorageMeta meta) {
+                if (!meta.getStoredEnchants().isEmpty()) {
+                    Map<String, Integer> enchants = new LinkedHashMap<>();
+                    for (Map.Entry<Enchantment, Integer> e : meta.getStoredEnchants().entrySet()) {
+                        enchants.put(e.getKey().getKey().getKey(), e.getValue());
+                    }
+                    entry.put("enchantments", enchants);
+                }
+            }
+            list.add(entry);
+        }
+        plugin.getConfig().set("auction-items", list);
+        plugin.saveConfig();
+        plugin.getLogger().info("auction-items: " + itemPool.size() + " 件を config.yml に保存しました。");
+    }
+
     /** アイテムプールの表示名リストを返す */
     public List<String> getItemPoolNames() {
         List<String> names = new ArrayList<>();

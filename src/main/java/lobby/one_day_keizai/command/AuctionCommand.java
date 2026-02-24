@@ -123,12 +123,8 @@ public class AuctionCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(ChatColor.YELLOW + "config.yml に自動保存されました。");
     }
 
-    /** 現在のアイテムプール一覧を表示 */
+    /** 現在のアイテムプール一覧を表示（全員利用可能） */
     private void handleList(CommandSender sender) {
-        if (!sender.hasPermission("one_day_keizai.auction.list") && !sender.isOp()) {
-            sender.sendMessage(ChatColor.RED + "権限がありません。");
-            return;
-        }
         List<String> names = auctionManager.getItemPoolNames();
         if (names.isEmpty()) {
             sender.sendMessage(ChatColor.YELLOW + "アイテムプールが空です。");
@@ -143,9 +139,7 @@ public class AuctionCommand implements CommandExecutor, TabCompleter {
     private void sendUsage(CommandSender sender) {
         sender.sendMessage(ChatColor.YELLOW + "使い方:");
         sender.sendMessage(ChatColor.YELLOW + "  /auction <金額>           - 入札する");
-        if (sender.isOp() || sender.hasPermission("one_day_keizai.auction.list")) {
-            sender.sendMessage(ChatColor.YELLOW + "  /auction list             - アイテムプール一覧を表示");
-        }
+        sender.sendMessage(ChatColor.YELLOW + "  /auction list             - アイテムプール一覧を表示");
         if (sender.isOp() || sender.hasPermission("one_day_keizai.auction.add")) {
             sender.sendMessage(ChatColor.YELLOW + "  /auction add [表示名]     - 手持ちアイテムをプールに追加");
         }

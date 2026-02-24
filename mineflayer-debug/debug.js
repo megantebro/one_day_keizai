@@ -1,123 +1,171 @@
 /**
- * one_day_keizai プラグイン mineflayer デバッグスクリプト
- *
- * 使い方:
- *   node debug.js --host <サーバーIP> --port <ポート> --user <ユーザー名>
- *
- * 前提: Paper 1.20.1 + one_day_keizai プラグイン + Vault + Economy実装 が起動中であること
+ * one_day_keizai mineflayer デバッグスクリプト
+ * online-mode=false のローカルサーバーに接続してコマンド動作を確認する
  */
 
 const mineflayer = require('mineflayer');
 
 const HOST = process.env.HOST || 'localhost';
 const PORT = parseInt(process.env.PORT || '25565');
-const USER = process.env.USER || 'DebugBot';
 
-// テストシナリオ一覧
-const scenarios = [
-  scenarioBal,
-  scenarioDebtLend,
-  scenarioAuction,
-  scenarioCombatLogout,
-];
+const results = { pass: 0, fail: 0, log: [] };
 
-// -------- ユーティリティ --------
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
+function log(type, msg) {
+  const icon = type === 'PASS' ? '✅' : type === 'FAIL' ? '❌' : 'ℹ️';
+  console.log(`${icon} [${type}] ${msg}`);
+  results.log.push({ type, msg });
+  if (type === 'PASS') results.pass++;
+  if (type === 'FAIL') results.fail++;
 }
 
-function waitForMessage(bot, keyword, timeoutMs = 10000) {
+function waitForMessage(bot, keyword, timeoutMs = 8000) {
   return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error(`Timeout waiting for: ${keyword}`)), timeoutMs);
-    bot.on('messagestr', (msg) => {
+    const timer = setTimeout(() => reject(new Error(`Timeout: "${keyword}"`)), timeoutMs);
+    const handler = (msg) => {
       if (msg.includes(keyword)) {
         clearTimeout(timer);
+        bot.removeListener('messagestr', handler);
         resolve(msg);
       }
-    });
+    };
+    bot.on('messagestr', handler);
   });
 }
 
-// -------- シナリオ --------
+async function runTests(bot) {
+  await sleep(2000);
 
-async function scenarioBal(bot) {
-  console.log('[TEST] /bal コマンド');
-  bot.chat('/bal');
-  const msg = await waitForMessage(bot, '所持金');
-  console.log('[PASS] /bal 応答:', msg);
+  // --- Test 1: 初期スポーンが安全ワールド(economy)か確認 ---
+  try {
+    const world = bot.game.dimension;
+    const pos = bot.entity.position;
+    log('INFO', `スポーン地点: ${world} / x=${pos.x.toFixed(1)} y=${pos.y.toFixed(1)} z=${pos.z.toFixed(1)}`);
+    // economyワールドにいるかはサーバー側コマンドで確認
+    bot.chat('/bal');
+    const balMsg = await waitForMessage(bot, '所持金');
+    log('PASS', `/bal 応答OK: ${balMsg.trim()}`);
+  } catch (e) {
+    log('FAIL', `/bal タイムアウト: ${e.message}`);
+  }
+
+  await sleep(500);
+
+  // --- Test 2: /job list ---
+  try {
+    bot.chat('/job list');
+    const jobMsg = await waitForMessage(bot, '農家');
+    log('PASS', `/job list 応答OK: ${jobMsg.trim()}`);
+  } catch (e) {
+    log('FAIL', `/job list タイムアウト: ${e.message}`);
+  }
+
+  await sleep(500);
+
+  // --- Test 3: /job select farmer ---
+  try {
+    bot.chat('/job select farmer');
+    const msg = await waitForMessage(bot, '農家');
+    log('PASS', `/job select farmer OK: ${msg.trim()}`);
+  } catch (e) {
+    log('FAIL', `/job select farmer タイムアウト: ${e.message}`);
+  }
+
+  await sleep(500);
+
+  // --- Test 4: /job info で農家になっているか確認 ---
+  try {
+    bot.chat('/job info');
+    const msg = await waitForMessage(bot, '農家');
+    log('PASS', `/job info 農家確認OK: ${msg.trim()}`);
+  } catch (e) {
+    log('FAIL', `/job info タイムアウト: ${e.message}`);
+  }
+
+  await sleep(500);
+
+  // --- Test 5: /job select blacksmith ---
+  try {
+    bot.chat('/job select blacksmith');
+    const msg = await waitForMessage(bot, '鍛冶屋');
+    log('PASS', `/job select blacksmith OK: ${msg.trim()}`);
+  } catch (e) {
+    log('FAIL', `/job select blacksmith タイムアウト: ${e.message}`);
+  }
+
+  await sleep(500);
+
+  // --- Test 6: /ow enter (所持金不足で失敗するはず) ---
+  try {
+    bot.chat('/ow enter');
+    const msg = await waitForMessage(bot, '入場料');
+    log('PASS', `/ow enter 入場料チェックOK: ${msg.trim()}`);
+  } catch (e) {
+    log('FAIL', `/ow enter タイムアウト: ${e.message}`);
+  }
+
+  await sleep(500);
+
+  // --- Test 7: /auction list ---
+  try {
+    bot.chat('/auction list');
+    const msg = await waitForMessage(bot, 'オークション');
+    log('PASS', `/auction list 応答OK: ${msg.trim()}`);
+  } catch (e) {
+    log('FAIL', `/auction list タイムアウト: ${e.message}`);
+  }
+
+  await sleep(500);
+
+  // --- Test 8: /debt list ---
+  try {
+    bot.chat('/debt list');
+    const msg = await waitForMessage(bot, '債権');
+    log('PASS', `/debt list 応答OK: ${msg.trim()}`);
+  } catch (e) {
+    log('FAIL', `/debt list タイムアウト: ${e.message}`);
+  }
+
+  await sleep(500);
+
+  // --- Test 9: /ow return (オーバーワールドにいないのでエラーになるはず) ---
+  try {
+    bot.chat('/ow return');
+    const msg = await waitForMessage(bot, 'オーバーワールド');
+    log('PASS', `/ow return エラー応答OK: ${msg.trim()}`);
+  } catch (e) {
+    log('FAIL', `/ow return タイムアウト: ${e.message}`);
+  }
+
+  // --- 結果サマリー ---
+  console.log('\n' + '='.repeat(50));
+  console.log(`テスト結果: PASS ${results.pass} / FAIL ${results.fail} / 合計 ${results.pass + results.fail}`);
+  console.log('='.repeat(50));
+
+  bot.quit();
 }
 
-async function scenarioDebtLend(bot) {
-  console.log('[TEST] /debt list (債権なし)');
-  bot.chat('/debt list');
-  const msg = await waitForMessage(bot, '債権');
-  console.log('[PASS] /debt list 応答:', msg);
-}
+const bot = mineflayer.createBot({
+  host: HOST,
+  port: PORT,
+  username: 'DebugBot',
+  version: '1.20.1',
+  auth: 'offline',
+});
 
-async function scenarioAuction(bot) {
-  console.log('[TEST] /auction (オークションなし)');
-  bot.chat('/auction 100');
-  const msg = await waitForMessage(bot, 'オークション');
-  console.log('[PASS] /auction 応答:', msg);
-}
-
-async function scenarioCombatLogout(bot) {
-  console.log('[TEST] /ow (使い方確認)');
-  bot.chat('/ow');
-  const msg = await waitForMessage(bot, 'オーバーワールド');
-  console.log('[PASS] /ow 応答:', msg);
-}
-
-// -------- メイン --------
-
-async function main() {
-  console.log(`\n=== one_day_keizai mineflayer デバッグ開始 ===`);
-  console.log(`接続先: ${HOST}:${PORT} / ユーザー: ${USER}\n`);
-
-  const bot = mineflayer.createBot({
-    host: HOST,
-    port: PORT,
-    username: USER,
-    version: '1.20.1',
-    auth: 'offline',
-  });
-
-  bot.on('login', async () => {
-    console.log('[INFO] サーバー接続成功');
-    await sleep(2000); // プラグイン初期化待ち
-
-    let passed = 0;
-    let failed = 0;
-
-    for (const scenario of scenarios) {
-      try {
-        await scenario(bot);
-        passed++;
-      } catch (err) {
-        console.error(`[FAIL] ${scenario.name}: ${err.message}`);
-        failed++;
-      }
-      await sleep(1000);
-    }
-
-    console.log(`\n=== 結果: PASS ${passed} / FAIL ${failed} / 合計 ${passed + failed} ===`);
+bot.on('login', () => {
+  console.log(`[INFO] 接続成功: ${HOST}:${PORT}`);
+  runTests(bot).catch(e => {
+    console.error('[ERROR]', e);
     bot.quit();
   });
+});
 
-  bot.on('error', (err) => {
-    console.error('[ERROR]', err.message);
-    // 接続エラー: サーバー未起動の場合は「connect ECONNREFUSED」が出る
-  });
+bot.on('messagestr', (msg) => {
+  if (msg.trim()) console.log(`  [CHAT] ${msg.trim()}`);
+});
 
-  bot.on('kicked', (reason) => {
-    console.log('[INFO] キックされました:', reason);
-  });
-
-  bot.on('end', () => {
-    console.log('[INFO] 切断しました');
-    process.exit(0);
-  });
-}
-
-main().catch(console.error);
+bot.on('error', err => console.error('[ERROR]', err.message));
+bot.on('kicked', reason => console.log('[KICKED]', reason));
+bot.on('end', () => { console.log('[INFO] 切断'); process.exit(0); });

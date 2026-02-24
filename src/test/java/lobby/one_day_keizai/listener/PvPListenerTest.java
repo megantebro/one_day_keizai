@@ -31,6 +31,7 @@ class PvPListenerTest {
     @Mock private DebtManager debtManager;
     @Mock private NametagManager nametagManager;
     @Mock private WorldManager worldManager;
+    @Mock private LogoutManager logoutManager;
     @Mock private World overworldMock;
 
     @Mock private Player victim;
@@ -44,7 +45,7 @@ class PvPListenerTest {
     @BeforeEach
     void setUp() {
         pvpListener = new PvPListener(economy, criminalManager, combatManager,
-                protectionManager, debtManager, nametagManager, worldManager, 0.33);
+                protectionManager, debtManager, nametagManager, worldManager, logoutManager, 0.33);
 
         lenient().when(victim.getUniqueId()).thenReturn(victimId);
         lenient().when(killer.getUniqueId()).thenReturn(killerId);
@@ -274,6 +275,21 @@ class PvPListenerTest {
         pvpListener.onPlayerDeath(event);
 
         verify(combatManager).clearCombatData(victimId, killerId);
+    }
+
+    @Test
+    void onDeath_combatLogoutDeath_skipsMoneyProcessing() {
+        // 戦闘ログアウト死亡: LogoutManager で money 処理済みのため PvPListener は何もしない
+        PlayerDeathEvent event = createDeathEvent(killer);
+        when(logoutManager.isCombatLogoutDeath(victimId)).thenReturn(true);
+
+        pvpListener.onPlayerDeath(event);
+
+        // money 処理が一切走っていないこと
+        verify(economy, never()).withdrawPlayer(any(Player.class), anyDouble());
+        verify(economy, never()).depositPlayer(any(Player.class), anyDouble());
+        // combatData はクリアされること
+        verify(combatManager).clearAllData(victimId);
     }
 
     // =========================================

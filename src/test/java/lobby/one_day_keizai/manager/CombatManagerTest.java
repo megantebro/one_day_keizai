@@ -64,12 +64,32 @@ class CombatManagerTest {
     // --- 先制攻撃記録テスト ---
 
     @Test
-    void recordAttack_firstAttackRecorded_subsequentIgnored() {
+    void recordAttack_pairTracking_independentForEachAttacker() {
+        // A と C がそれぞれ B を殴った場合、A→B と C→B は独立したペアとして記録される
         combatManager.recordAttack(playerA, playerB);
-        combatManager.recordAttack(playerC, playerB); // 2番目の攻撃者は先制として記録されない
+        combatManager.recordAttack(playerC, playerB);
 
-        // Aが先に殴ったまま
+        // Aが先に殴ったので A→B は無実キル
         assertTrue(combatManager.isInnocentKill(playerA, playerB));
+        // C も B に先制したので C→B も無実キル
+        assertTrue(combatManager.isInnocentKill(playerC, playerB));
+    }
+
+    @Test
+    void isInnocentKill_coordinationExploit_blockedByPairTracking() {
+        // 連携エクスプロイト再現テスト:
+        // C が B を1発 → A が B を攻撃 → B が A に反撃 → A が B を殺す
+        // 旧実装: A→B がスキップされ B→A が記録されて「自衛」扱いになる
+        // 新実装: A→B ペアが独立して記録されるため、A が B を殺した場合は無実キルと正しく判定される
+
+        combatManager.recordAttack(playerC, playerB); // C が B を先制
+        combatManager.recordAttack(playerA, playerB); // A が B を攻撃（A→B ペア記録）
+        combatManager.recordAttack(playerB, playerA); // B が A に反撃（A→B 既存のため B→A は記録されない）
+
+        // A が B を殺す → A→B が記録されているため無実キル（自衛判定は不可）
+        assertTrue(combatManager.isInnocentKill(playerA, playerB));
+        // B が A を殺す → A→B が記録されているため B は自衛
+        assertFalse(combatManager.isInnocentKill(playerB, playerA));
     }
 
     // --- 最後の攻撃者テスト ---

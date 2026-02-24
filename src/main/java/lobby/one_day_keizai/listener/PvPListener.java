@@ -22,12 +22,13 @@ public class PvPListener implements Listener {
     private final DebtManager debtManager;
     private final NametagManager nametagManager;
     private final WorldManager worldManager;
+    private final LogoutManager logoutManager;
     private final double moneyStealRatio;
 
     public PvPListener(Economy economy, CriminalManager criminalManager, CombatManager combatManager,
                        ProtectionManager protectionManager, DebtManager debtManager,
                        NametagManager nametagManager, WorldManager worldManager,
-                       double moneyStealRatio) {
+                       LogoutManager logoutManager, double moneyStealRatio) {
         this.economy = economy;
         this.criminalManager = criminalManager;
         this.combatManager = combatManager;
@@ -35,6 +36,7 @@ public class PvPListener implements Listener {
         this.debtManager = debtManager;
         this.nametagManager = nametagManager;
         this.worldManager = worldManager;
+        this.logoutManager = logoutManager;
         this.moneyStealRatio = moneyStealRatio;
     }
 
@@ -105,6 +107,12 @@ public class PvPListener implements Listener {
         // オーバーワールド死亡: デポジット没収
         if (inOverworld) {
             worldManager.handleOverworldDeath(victim);
+        }
+
+        // 戦闘ログアウト死亡: LogoutManager で金銭処理済みのためスキップ
+        if (logoutManager != null && logoutManager.isCombatLogoutDeath(victimId)) {
+            combatManager.clearAllData(victimId);
+            return;
         }
 
         Player killer = victim.getKiller();

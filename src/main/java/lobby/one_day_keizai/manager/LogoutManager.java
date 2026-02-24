@@ -33,6 +33,9 @@ public class LogoutManager {
     private final Map<UUID, Long> bedProximityTimestamps = new ConcurrentHashMap<>();
     private final Set<UUID> bedStayNotified = ConcurrentHashMap.newKeySet();
 
+    // 戦闘ログアウト死亡処理中フラグ: PvPListenerでの二重金銭没収を防ぐ
+    private final Set<UUID> combatLogoutDeaths = ConcurrentHashMap.newKeySet();
+
     public LogoutManager(JavaPlugin plugin, PlayerDataManager dataManager, CombatManager combatManager,
                          CriminalManager criminalManager, NametagManager nametagManager,
                          Economy economy, int bedLogoutRadius, int logoutGraceMinutes,
@@ -152,7 +155,16 @@ public class LogoutManager {
     }
 
     /**
+     * 戦闘ログアウト死亡処理中かどうかを返す。
+     * PvPListener.onPlayerDeath での二重金銭没収防止に使用。
+     */
+    public boolean isCombatLogoutDeath(UUID uuid) {
+        return combatLogoutDeaths.contains(uuid);
+    }
+
+    /**
      * 戦闘ログアウト処理：最後の攻撃者にキル判定。
+     * 金銭処理は setHealth(0) より先に行い、PlayerDeathEvent での二重没収を防ぐ。
      */
     private void handleCombatLogout(Player victim) {
         UUID victimId = victim.getUniqueId();
@@ -161,22 +173,19 @@ public class LogoutManager {
         if (attackerId != null) {
             Player attacker = Bukkit.getPlayer(attackerId);
 
-            // 金銭奪取
+            // 金銭奪取（setHealth(0) より先に処理して二重没収を防ぐ）
             double victimBalance = economy.getBalance(victim);
             double stolenAmount = victimBalance * moneyStealRatio;
             if (stolenAmount > 0) {
-                victim.setHealth(0);
                 economy.withdrawPlayer(victim, stolenAmount);
                 if (attacker != null) {
                     economy.depositPlayer(attacker, stolenAmount);
-                    attacker.sendMessage(ChatColor.GOLD + victim.getName() + " が戦闘ログアウトしました。" +
-                            String.format("%.0f", stolenAmount) + " を獲得しました。");
+                    attacker.sendMessage(ChatColor.GOLD + victim.getName() + " が戦闘ログアウトしました。"
+                            + String.format("%.0f", stolenAmount) + " を獲得しました。");
                 } else {
                     economy.depositPlayer(Bukkit.getOfflinePlayer(attackerId), stolenAmount);
                 }
             }
-
-            // 戦闘ログアウトは無実キルカウントに含めない（悪用防止）
 
             // 罪人ならアイテムドロップ
             if (criminalManager.isCriminal(victimId)) {
@@ -190,6 +199,14 @@ public class LogoutManager {
             }
         }
 
+        // setHealth(0) が PlayerDeathEvent を発火させる前にフラグを立てる
+        // → PvPListener.onPlayerDeath が二重に金銭処理しないよう通知
+        combatLogoutDeaths.add(victimId);
+        victim.setHealth(0);
+        // イベントは同期で発火されるため、ここに来た時点でフラグは不要
+        combatLogoutDeaths.remove(victimId);
+
+        // 戦闘ログアウトは無実キルカウントに含めない（悪用防止）
         combatManager.clearAllData(victimId);
         Bukkit.broadcastMessage(ChatColor.RED + victim.getName() + " は戦闘中にログアウトしました！");
     }

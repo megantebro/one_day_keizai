@@ -79,7 +79,7 @@ public final class One_day_keizai extends JavaPlugin {
         Bukkit.getPluginManager().registerEvents(
                 new PvPListener(economy, criminalManager, combatManager,
                         protectionManager, debtManager, nametagManager, worldManager,
-                        moneyStealRatio), this);
+                        logoutManager, moneyStealRatio), this);
         Bukkit.getPluginManager().registerEvents(
                 new PlayerListener(criminalManager, protectionManager, logoutManager,
                         nametagManager, worldManager), this);

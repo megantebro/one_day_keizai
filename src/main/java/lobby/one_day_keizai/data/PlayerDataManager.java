@@ -1,5 +1,6 @@
 package lobby.one_day_keizai.data;
 
+import lobby.one_day_keizai.job.Job;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -63,6 +64,18 @@ public class PlayerDataManager {
 
     public void setCriminal(UUID uuid, boolean criminal) {
         dataConfig.set("players." + uuid + ".isCriminal", criminal);
+    }
+
+    // --- Job ---
+
+    public Job getJob(UUID uuid) {
+        String jobName = dataConfig.getString("players." + uuid + ".job", Job.NONE.name());
+        Job job = Job.fromString(jobName);
+        return job != null ? job : Job.NONE;
+    }
+
+    public void setJob(UUID uuid, Job job) {
+        dataConfig.set("players." + uuid + ".job", job.name());
     }
 
     // --- Bed Location ---

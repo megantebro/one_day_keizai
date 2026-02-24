@@ -3,8 +3,12 @@ package lobby.one_day_keizai;
 import lobby.one_day_keizai.command.AuctionCommand;
 import lobby.one_day_keizai.command.BalanceCommand;
 import lobby.one_day_keizai.command.DebtCommand;
+import lobby.one_day_keizai.command.JobCommand;
 import lobby.one_day_keizai.command.OverworldCommand;
 import lobby.one_day_keizai.data.PlayerDataManager;
+import lobby.one_day_keizai.job.JobManager;
+import lobby.one_day_keizai.listener.JobCraftListener;
+import lobby.one_day_keizai.listener.JobFarmListener;
 import lobby.one_day_keizai.listener.PlayerListener;
 import lobby.one_day_keizai.listener.PvPListener;
 import lobby.one_day_keizai.listener.WorldListener;
@@ -51,6 +55,9 @@ public final class One_day_keizai extends JavaPlugin {
         // データ管理
         playerDataManager = new PlayerDataManager(this);
 
+        // 職業マネージャー
+        JobManager jobManager = new JobManager(playerDataManager);
+
         // マネージャー初期化
         CriminalManager criminalManager = new CriminalManager(playerDataManager, innocentKillLimit);
         NametagManager nametagManager = new NametagManager();
@@ -77,6 +84,9 @@ public final class One_day_keizai extends JavaPlugin {
                 new PlayerListener(criminalManager, protectionManager, logoutManager,
                         nametagManager, worldManager), this);
         Bukkit.getPluginManager().registerEvents(new WorldListener(), this);
+        Bukkit.getPluginManager().registerEvents(new JobCraftListener(jobManager), this);
+        Bukkit.getPluginManager().registerEvents(
+                new JobFarmListener(jobManager, safeWorldName), this);
 
         // コマンド登録
         getCommand("debt").setExecutor(new DebtCommand(debtManager, economy));
@@ -88,6 +98,9 @@ public final class One_day_keizai extends JavaPlugin {
         OverworldCommand overworldCommand = new OverworldCommand(worldManager);
         getCommand("ow").setExecutor(overworldCommand);
         getCommand("ow").setTabCompleter(overworldCommand);
+        JobCommand jobCommand = new JobCommand(jobManager);
+        getCommand("job").setExecutor(jobCommand);
+        getCommand("job").setTabCompleter(jobCommand);
 
         // ベッド付近滞在トラッカー開始
         logoutManager.startBedProximityTracker();

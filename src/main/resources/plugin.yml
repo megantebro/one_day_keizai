@@ -2,8 +2,7 @@ name: one_day_keizai
 version: '${project.version}'
 main: lobby.one_day_keizai.One_day_keizai
 api-version: '1.20'
-depend: [Vault]
-softdepend: [Multiverse-Core]
+depend: [Vault, Multiverse-Core]
 
 commands:
   debt:

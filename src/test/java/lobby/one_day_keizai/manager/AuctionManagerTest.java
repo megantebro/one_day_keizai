@@ -5,6 +5,7 @@ import net.milkbowl.vault.economy.Economy;
 import org.bukkit.Material;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.Server;
+import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemFactory;
 import org.bukkit.inventory.ItemStack;
@@ -20,7 +21,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.UUID;
+import java.util.logging.Logger;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -34,6 +37,7 @@ class AuctionManagerTest {
     @Mock private ItemFactory itemFactory;
     @Mock private EnchantmentStorageMeta enchantMeta;
     @Mock private BukkitScheduler scheduler;
+    @Mock private FileConfiguration config;
 
     private AuctionManager auctionManager;
 
@@ -45,6 +49,10 @@ class AuctionManagerTest {
         lenient().when(itemFactory.isApplicable(any(), any(Material.class))).thenReturn(true);
         lenient().when(itemFactory.asMetaFor(any(), any(Material.class))).thenReturn(enchantMeta);
         lenient().when(server.getScheduler()).thenReturn(scheduler);
+        // configは空を返す→デフォルト6件にフォールバック
+        when(plugin.getConfig()).thenReturn(config);
+        when(config.getList("auction-items")).thenReturn(null);
+        lenient().when(plugin.getLogger()).thenReturn(Logger.getLogger("test"));
         auctionManager = new AuctionManager(plugin, economy, 30, 120);
     }
 
@@ -58,6 +66,45 @@ class AuctionManagerTest {
     @Test
     void itemPool_hasSixItems() {
         assertEquals(6, auctionManager.getItemPool().size());
+    }
+
+    @Test
+    void reloadItemPool_withNullConfig_fallsBackToDefault() {
+        // config が null を返す場合はデフォルト6件
+        when(config.getList("auction-items")).thenReturn(null);
+        int count = auctionManager.reloadItemPool();
+        assertEquals(6, count);
+    }
+
+    @Test
+    void reloadItemPool_withEmptyConfig_fallsBackToDefault() {
+        doReturn(List.of()).when(config).getList("auction-items");
+        int count = auctionManager.reloadItemPool();
+        assertEquals(6, count);
+    }
+
+    @Test
+    void reloadItemPool_withValidItems_loadsCorrectly() {
+        List<?> items = List.of(
+            java.util.Map.of("material", "DIAMOND", "amount", 5, "name", "ダイヤ x5"),
+            java.util.Map.of("material", "GOLD_INGOT", "amount", 10, "name", "金インゴット x10")
+        );
+        doReturn(items).when(config).getList("auction-items");
+        int count = auctionManager.reloadItemPool();
+        assertEquals(2, count);
+        assertEquals(List.of("ダイヤ x5", "金インゴット x10"), auctionManager.getItemPoolNames());
+    }
+
+    @Test
+    void reloadItemPool_withInvalidMaterial_skipsEntry() {
+        List<?> items = List.of(
+            java.util.Map.of("material", "INVALID_MATERIAL_XYZ", "amount", 1, "name", "無効"),
+            java.util.Map.of("material", "DIAMOND", "amount", 1, "name", "ダイヤ")
+        );
+        doReturn(items).when(config).getList("auction-items");
+        int count = auctionManager.reloadItemPool();
+        assertEquals(1, count);
+        assertEquals(List.of("ダイヤ"), auctionManager.getItemPoolNames());
     }
 
     // --- startAuction ---

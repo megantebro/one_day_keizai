@@ -13,8 +13,8 @@ commands:
     description: 残高確認
     usage: /bal
   auction:
-    description: オークション入札
-    usage: /auction <金額>
+    description: オークション入札・管理
+    usage: /auction <金額|list|reload>
   ow:
     description: オーバーワールド移動
     usage: /ow <enter|return>

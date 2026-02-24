@@ -4,6 +4,7 @@ import net.milkbowl.vault.economy.Economy;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -11,6 +12,7 @@ import org.bukkit.inventory.meta.EnchantmentStorageMeta;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.*;
+import java.util.logging.Level;
 
 public class AuctionManager {
 
@@ -44,36 +46,119 @@ public class AuctionManager {
         this.economy = economy;
         this.auctionIntervalMinutes = auctionIntervalMinutes;
         this.auctionDurationSeconds = auctionDurationSeconds;
-        initializeItemPool();
+        loadItemPoolFromConfig();
     }
 
-    private void initializeItemPool() {
-        // 1. エンチャント瓶 × 64
-        itemPool.add(new AuctionItem(
-                new ItemStack(Material.EXPERIENCE_BOTTLE, 64), "エンチャント瓶 x64"));
+    /**
+     * config.yml の auction-items セクションからアイテムプールを読み込む。
+     * プールが空の場合はデフォルトアイテムにフォールバックする。
+     */
+    public int reloadItemPool() {
+        itemPool.clear();
+        plugin.reloadConfig();
+        loadItemPoolFromConfig();
+        return itemPool.size();
+    }
 
-        // 2. サドル × 1
-        itemPool.add(new AuctionItem(
-                new ItemStack(Material.SADDLE, 1), "サドル"));
+    private void loadItemPoolFromConfig() {
+        List<?> configItems = plugin.getConfig().getList("auction-items");
 
-        // 3. ダイヤブロック × 2
-        itemPool.add(new AuctionItem(
-                new ItemStack(Material.DIAMOND_BLOCK, 2), "ダイヤブロック x2"));
+        if (configItems == null || configItems.isEmpty()) {
+            plugin.getLogger().warning("auction-items が config.yml に見つかりません。デフォルトアイテムを使用します。");
+            loadDefaultItemPool();
+            return;
+        }
 
-        // 4. 幸運IIのエンチャント本
+        int loaded = 0;
+        for (Object obj : configItems) {
+            if (!(obj instanceof Map<?, ?> map)) continue;
+
+            String materialName = getString(map, "material");
+            int amount = getInt(map, "amount", 1);
+            String name = getString(map, "name");
+
+            if (materialName == null || name == null) {
+                plugin.getLogger().warning("auction-items: material または name が未設定のエントリをスキップします。");
+                continue;
+            }
+
+            Material material = Material.matchMaterial(materialName);
+            if (material == null) {
+                plugin.getLogger().warning("auction-items: 不明なマテリアル '" + materialName + "' をスキップします。");
+                continue;
+            }
+
+            ItemStack item = new ItemStack(material, amount);
+
+            // エンチャント本の場合はエンチャントを付与
+            if (material == Material.ENCHANTED_BOOK && map.containsKey("enchantments")) {
+                Object enchObj = map.get("enchantments");
+                if (enchObj instanceof Map<?, ?> enchMap) {
+                    EnchantmentStorageMeta meta = (EnchantmentStorageMeta) item.getItemMeta();
+                    if (meta != null) {
+                        for (Map.Entry<?, ?> entry : enchMap.entrySet()) {
+                            String enchName = entry.getKey().toString();
+                            int level = entry.getValue() instanceof Number n ? n.intValue() : 1;
+                            Enchantment enchantment = resolveEnchantment(enchName);
+                            if (enchantment != null) {
+                                meta.addStoredEnchant(enchantment, level, true);
+                            } else {
+                                plugin.getLogger().warning("auction-items: 不明なエンチャント '" + enchName + "' をスキップします。");
+                            }
+                        }
+                        item.setItemMeta(meta);
+                    }
+                }
+            }
+
+            itemPool.add(new AuctionItem(item, name));
+            loaded++;
+        }
+
+        if (loaded == 0) {
+            plugin.getLogger().warning("auction-items: 有効なアイテムがありません。デフォルトアイテムを使用します。");
+            loadDefaultItemPool();
+        } else {
+            plugin.getLogger().info("auction-items: " + loaded + " 件のアイテムをロードしました。");
+        }
+    }
+
+    /** エンチャント名（大文字・小文字不問）から Enchantment を解決する */
+    @SuppressWarnings("deprecation")
+    private Enchantment resolveEnchantment(String name) {
+        // まず NamespacedKey で試みる
+        NamespacedKey key = NamespacedKey.minecraft(name.toLowerCase(java.util.Locale.ROOT));
+        Enchantment ench = Enchantment.getByKey(key);
+        if (ench != null) return ench;
+        // レガシー名（例: LOOT_BONUS_BLOCKS）でも試みる
+        return Enchantment.getByName(name.toUpperCase(java.util.Locale.ROOT));
+    }
+
+    private void loadDefaultItemPool() {
+        itemPool.add(new AuctionItem(new ItemStack(Material.EXPERIENCE_BOTTLE, 64), "エンチャント瓶 x64"));
+        itemPool.add(new AuctionItem(new ItemStack(Material.SADDLE, 1), "サドル"));
+        itemPool.add(new AuctionItem(new ItemStack(Material.DIAMOND_BLOCK, 2), "ダイヤブロック x2"));
+
         ItemStack fortuneBook = new ItemStack(Material.ENCHANTED_BOOK, 1);
         EnchantmentStorageMeta meta = (EnchantmentStorageMeta) fortuneBook.getItemMeta();
-        meta.addStoredEnchant(Enchantment.LOOT_BONUS_BLOCKS, 2, true);
-        fortuneBook.setItemMeta(meta);
+        if (meta != null) {
+            meta.addStoredEnchant(Enchantment.LOOT_BONUS_BLOCKS, 2, true);
+            fortuneBook.setItemMeta(meta);
+        }
         itemPool.add(new AuctionItem(fortuneBook, "幸運IIのエンチャント本"));
 
-        // 5. エンチャント瓶 × 128 (2スタック)
-        itemPool.add(new AuctionItem(
-                new ItemStack(Material.EXPERIENCE_BOTTLE, 128), "エンチャント瓶 x128"));
+        itemPool.add(new AuctionItem(new ItemStack(Material.EXPERIENCE_BOTTLE, 128), "エンチャント瓶 x128"));
+        itemPool.add(new AuctionItem(new ItemStack(Material.BOOKSHELF, 5), "本棚 x5"));
+    }
 
-        // 6. 本棚 × 5
-        itemPool.add(new AuctionItem(
-                new ItemStack(Material.BOOKSHELF, 5), "本棚 x5"));
+    private String getString(Map<?, ?> map, String key) {
+        Object val = map.get(key);
+        return val != null ? val.toString() : null;
+    }
+
+    private int getInt(Map<?, ?> map, String key, int def) {
+        Object val = map.get(key);
+        return val instanceof Number n ? n.intValue() : def;
     }
 
     /**
@@ -249,6 +334,15 @@ public class AuctionManager {
 
     public Map<UUID, Double> getBids() {
         return Collections.unmodifiableMap(bids);
+    }
+
+    /** アイテムプールの表示名リストを返す */
+    public List<String> getItemPoolNames() {
+        List<String> names = new ArrayList<>();
+        for (AuctionItem item : itemPool) {
+            names.add(item.name);
+        }
+        return names;
     }
 
     // テスト用: アイテムプールにアクセス

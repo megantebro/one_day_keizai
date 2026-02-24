@@ -13,3 +13,30 @@ safe-world-name: economy
 overworld-name: world
 overworld-entry-fee: 1000
 overworld-refund-ratio: 0.8
+
+# オークションアイテムプール
+# material: Bukkit Material 名（大文字）
+# amount:   個数
+# name:     表示名
+# enchantments: （省略可）エンチャント本専用。"エンチャント名: レベル" の形式
+auction-items:
+  - material: EXPERIENCE_BOTTLE
+    amount: 64
+    name: "エンチャント瓶 x64"
+  - material: SADDLE
+    amount: 1
+    name: "サドル"
+  - material: DIAMOND_BLOCK
+    amount: 2
+    name: "ダイヤブロック x2"
+  - material: ENCHANTED_BOOK
+    amount: 1
+    name: "幸運IIのエンチャント本"
+    enchantments:
+      LOOT_BONUS_BLOCKS: 2
+  - material: EXPERIENCE_BOTTLE
+    amount: 128
+    name: "エンチャント瓶 x128"
+  - material: BOOKSHELF
+    amount: 5
+    name: "本棚 x5"

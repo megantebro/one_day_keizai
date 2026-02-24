@@ -17,6 +17,13 @@ commands:
   ow:
     description: オーバーワールド移動
     usage: /ow <enter|return>
+    permission: one_day_keizai.ow
+    permission-message: §cこのコマンドは権限持ちのみ使用できます。
   job:
     description: 職業管理
     usage: /job <select|info|list> [職業名]
+
+permissions:
+  one_day_keizai.ow:
+    description: /ow コマンドの使用権限
+    default: op

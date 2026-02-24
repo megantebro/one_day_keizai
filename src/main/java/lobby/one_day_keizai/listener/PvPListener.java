@@ -21,17 +21,20 @@ public class PvPListener implements Listener {
     private final ProtectionManager protectionManager;
     private final DebtManager debtManager;
     private final NametagManager nametagManager;
+    private final WorldManager worldManager;
     private final double moneyStealRatio;
 
     public PvPListener(Economy economy, CriminalManager criminalManager, CombatManager combatManager,
                        ProtectionManager protectionManager, DebtManager debtManager,
-                       NametagManager nametagManager, double moneyStealRatio) {
+                       NametagManager nametagManager, WorldManager worldManager,
+                       double moneyStealRatio) {
         this.economy = economy;
         this.criminalManager = criminalManager;
         this.combatManager = combatManager;
         this.protectionManager = protectionManager;
         this.debtManager = debtManager;
         this.nametagManager = nametagManager;
+        this.worldManager = worldManager;
         this.moneyStealRatio = moneyStealRatio;
     }
 
@@ -51,6 +54,13 @@ public class PvPListener implements Listener {
 
         UUID victimId = victim.getUniqueId();
         UUID attackerId = attacker.getUniqueId();
+
+        // 安全ワールドではPVP無効
+        if (worldManager.isSafeWorld(victim.getWorld())) {
+            event.setCancelled(true);
+            attacker.sendMessage(ChatColor.RED + "安全ワールドではPVPできません。");
+            return;
+        }
 
         // リスポーン保護チェック（攻撃側または被攻撃側が保護中ならキャンセル）
         if (protectionManager.isProtected(victimId)) {
@@ -73,17 +83,28 @@ public class PvPListener implements Listener {
         Player victim = event.getEntity();
         UUID victimId = victim.getUniqueId();
 
-        // --- 罪人判定: アイテムドロップ（全死因共通）---
-        if (criminalManager.isCriminal(victimId)) {
-            // 罪人はアイテム全ドロップ
+        boolean inOverworld = worldManager.isInOverworld(victim);
+
+        // --- アイテムドロップ判定 ---
+        if (inOverworld) {
+            // オーバーワールド: 全員アイテム全ロスト
+            event.setKeepInventory(false);
+            event.setKeepLevel(false);
+        } else if (criminalManager.isCriminal(victimId)) {
+            // 安全ワールド罪人: アイテム全ドロップ
             event.setKeepInventory(false);
             event.setKeepLevel(false);
         } else {
-            // 非罪人はアイテム保持
+            // 安全ワールド非罪人: アイテム保持
             event.setKeepInventory(true);
             event.setKeepLevel(true);
             event.getDrops().clear();
             event.setDroppedExp(0);
+        }
+
+        // オーバーワールド死亡: デポジット没収
+        if (inOverworld) {
+            worldManager.handleOverworldDeath(victim);
         }
 
         Player killer = victim.getKiller();

@@ -56,8 +56,8 @@ class AuctionManagerTest {
     // --- アイテムプール ---
 
     @Test
-    void itemPool_hasFiveItems() {
-        assertEquals(5, auctionManager.getItemPool().size());
+    void itemPool_hasSixItems() {
+        assertEquals(6, auctionManager.getItemPool().size());
     }
 
     // --- startAuction ---
@@ -109,7 +109,7 @@ class AuctionManagerTest {
         Player player = mockPlayer(UUID.randomUUID(), "TestPlayer");
         when(economy.getBalance(player)).thenReturn(50.0);
         auctionManager.placeBid(player, 100);
-        verify(player).sendMessage(contains("残高が不足"));
+        verify(player).sendMessage(contains("入札上限"));
     }
 
     @Test

@@ -3,6 +3,7 @@ package lobby.one_day_keizai;
 import lobby.one_day_keizai.command.AuctionCommand;
 import lobby.one_day_keizai.command.BalanceCommand;
 import lobby.one_day_keizai.command.DebtCommand;
+import lobby.one_day_keizai.command.OverworldCommand;
 import lobby.one_day_keizai.data.PlayerDataManager;
 import lobby.one_day_keizai.listener.PlayerListener;
 import lobby.one_day_keizai.listener.PvPListener;
@@ -42,6 +43,10 @@ public final class One_day_keizai extends JavaPlugin {
         int bedStaySeconds = getConfig().getInt("bed-stay-seconds", 15);
         int auctionIntervalMinutes = getConfig().getInt("auction-interval-minutes", 30);
         int auctionDurationSeconds = getConfig().getInt("auction-duration-seconds", 120);
+        String safeWorldName = getConfig().getString("safe-world-name", "economy");
+        String overworldName = getConfig().getString("overworld-name", "world");
+        double overworldEntryFee = getConfig().getDouble("overworld-entry-fee", 1000);
+        double overworldRefundRatio = getConfig().getDouble("overworld-refund-ratio", 0.8);
 
         // データ管理
         playerDataManager = new PlayerDataManager(this);
@@ -58,14 +63,19 @@ public final class One_day_keizai extends JavaPlugin {
                 economy, bedLogoutRadius, logoutGraceMinutes, moneyStealRatio, bedStaySeconds);
         AuctionManager auctionManager = new AuctionManager(
                 this, economy, auctionIntervalMinutes, auctionDurationSeconds);
+        WorldManager worldManager = new WorldManager(
+                this, economy, playerDataManager,
+                safeWorldName, overworldName, overworldEntryFee, overworldRefundRatio);
         BalanceScoreboardManager balanceScoreboardManager = new BalanceScoreboardManager(this, economy);
 
         // リスナー登録
         Bukkit.getPluginManager().registerEvents(
                 new PvPListener(economy, criminalManager, combatManager,
-                        protectionManager, debtManager, nametagManager, moneyStealRatio), this);
+                        protectionManager, debtManager, nametagManager, worldManager,
+                        moneyStealRatio), this);
         Bukkit.getPluginManager().registerEvents(
-                new PlayerListener(criminalManager, protectionManager, logoutManager, nametagManager), this);
+                new PlayerListener(criminalManager, protectionManager, logoutManager,
+                        nametagManager, worldManager), this);
         Bukkit.getPluginManager().registerEvents(new WorldListener(), this);
 
         // コマンド登録
@@ -75,6 +85,9 @@ public final class One_day_keizai extends JavaPlugin {
         AuctionCommand auctionCommand = new AuctionCommand(auctionManager);
         getCommand("auction").setExecutor(auctionCommand);
         getCommand("auction").setTabCompleter(auctionCommand);
+        OverworldCommand overworldCommand = new OverworldCommand(worldManager);
+        getCommand("ow").setExecutor(overworldCommand);
+        getCommand("ow").setTabCompleter(overworldCommand);
 
         // ベッド付近滞在トラッカー開始
         logoutManager.startBedProximityTracker();

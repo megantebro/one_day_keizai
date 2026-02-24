@@ -138,6 +138,24 @@ public class PlayerDataManager {
         dataConfig.set("logoutPenalty." + uuid, null);
     }
 
+    // --- Overworld Deposit ---
+
+    public void setOverworldDeposit(UUID uuid, double amount) {
+        dataConfig.set("overworldDeposit." + uuid, amount);
+    }
+
+    public double getOverworldDeposit(UUID uuid) {
+        return dataConfig.getDouble("overworldDeposit." + uuid, 0.0);
+    }
+
+    public boolean hasOverworldDeposit(UUID uuid) {
+        return dataConfig.contains("overworldDeposit." + uuid);
+    }
+
+    public void clearOverworldDeposit(UUID uuid) {
+        dataConfig.set("overworldDeposit." + uuid, null);
+    }
+
     // --- Debt Data ---
 
     public void saveDebts(List<Map<String, Object>> debts) {

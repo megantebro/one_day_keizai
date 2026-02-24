@@ -7,3 +7,9 @@ bed-logout-radius: 5
 bed-stay-seconds: 15
 auction-interval-minutes: 30
 auction-duration-seconds: 120
+
+# ワールド分離設定
+safe-world-name: economy
+overworld-name: world
+overworld-entry-fee: 1000
+overworld-refund-ratio: 0.8

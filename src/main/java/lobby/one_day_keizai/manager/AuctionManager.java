@@ -22,6 +22,7 @@ public class AuctionManager {
     private ItemStack currentItem;
     private String currentItemName;
     private final Map<UUID, Double> bids = new HashMap<>();
+    private final Map<UUID, Double> balanceSnapshots = new HashMap<>();
     private boolean auctionActive = false;
 
     private final List<AuctionItem> itemPool = new ArrayList<>();
@@ -69,6 +70,10 @@ public class AuctionManager {
         // 5. エンチャント瓶 × 128 (2スタック)
         itemPool.add(new AuctionItem(
                 new ItemStack(Material.EXPERIENCE_BOTTLE, 128), "エンチャント瓶 x128"));
+
+        // 6. 本棚 × 5
+        itemPool.add(new AuctionItem(
+                new ItemStack(Material.BOOKSHELF, 5), "本棚 x5"));
     }
 
     /**
@@ -89,7 +94,13 @@ public class AuctionManager {
         currentItem = selected.item.clone();
         currentItemName = selected.name;
         bids.clear();
+        balanceSnapshots.clear();
         auctionActive = true;
+
+        // オークション開始時の全オンラインプレイヤーの所持金を記録
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            balanceSnapshots.put(p.getUniqueId(), economy.getBalance(p));
+        }
 
         Bukkit.broadcastMessage(ChatColor.GOLD + "=============================");
         Bukkit.broadcastMessage(ChatColor.GOLD + "" + ChatColor.BOLD + "  オークション開始！");
@@ -117,8 +128,12 @@ public class AuctionManager {
             return;
         }
 
-        if (economy.getBalance(player) < amount) {
-            player.sendMessage(ChatColor.RED + "残高が不足しています。");
+        // 開始時の所持金を上限とする（途中参加はその時点の所持金）
+        double maxBid = balanceSnapshots.computeIfAbsent(player.getUniqueId(),
+                id -> economy.getBalance(player));
+        if (amount > maxBid) {
+            player.sendMessage(ChatColor.RED + "入札上限（オークション開始時の所持金: " +
+                    String.format("%.0f", maxBid) + "円）を超えています。");
             return;
         }
 
@@ -163,12 +178,12 @@ public class AuctionManager {
         List<Map.Entry<UUID, Double>> sortedBids = new ArrayList<>(bids.entrySet());
         sortedBids.sort(Map.Entry.<UUID, Double>comparingByValue().reversed());
 
-        // 残高が足りる入札者を上位から探す
+        // 入札額が開始時の所持金以内の入札者を上位から探す
         UUID winnerId = null;
         double winningBid = 0;
         for (Map.Entry<UUID, Double> entry : sortedBids) {
-            double balance = economy.getBalance(Bukkit.getOfflinePlayer(entry.getKey()));
-            if (balance >= entry.getValue()) {
+            double snapshot = balanceSnapshots.getOrDefault(entry.getKey(), 0.0);
+            if (snapshot >= entry.getValue()) {
                 winnerId = entry.getKey();
                 winningBid = entry.getValue();
                 break;

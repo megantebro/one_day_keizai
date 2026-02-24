@@ -1,8 +1,11 @@
 package lobby.one_day_keizai.listener;
 
 import lobby.one_day_keizai.manager.*;
+import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
+import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -18,13 +21,16 @@ public class PlayerListener implements Listener {
     private final ProtectionManager protectionManager;
     private final LogoutManager logoutManager;
     private final NametagManager nametagManager;
+    private final WorldManager worldManager;
 
     public PlayerListener(CriminalManager criminalManager, ProtectionManager protectionManager,
-                          LogoutManager logoutManager, NametagManager nametagManager) {
+                          LogoutManager logoutManager, NametagManager nametagManager,
+                          WorldManager worldManager) {
         this.criminalManager = criminalManager;
         this.protectionManager = protectionManager;
         this.logoutManager = logoutManager;
         this.nametagManager = nametagManager;
+        this.worldManager = worldManager;
     }
 
     @EventHandler(priority = EventPriority.NORMAL)
@@ -55,6 +61,14 @@ public class PlayerListener implements Listener {
     @EventHandler(priority = EventPriority.HIGH)
     public void onPlayerRespawn(PlayerRespawnEvent event) {
         Player player = event.getPlayer();
+
+        // オーバーワールドで死亡した場合、安全ワールドにリスポーン
+        if (worldManager.consumeDiedInOverworld(player.getUniqueId())) {
+            World safeWorld = Bukkit.getWorld(worldManager.getSafeWorldName());
+            if (safeWorld != null) {
+                event.setRespawnLocation(safeWorld.getSpawnLocation());
+            }
+        }
 
         // リスポーン保護を付与（1tick後に実行して確実にリスポーン後に適用）
         player.getServer().getScheduler().runTaskLater(

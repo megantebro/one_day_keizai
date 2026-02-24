@@ -2,6 +2,7 @@ package lobby.one_day_keizai.listener;
 
 import lobby.one_day_keizai.manager.*;
 import net.milkbowl.vault.economy.Economy;
+import org.bukkit.World;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
@@ -29,6 +30,8 @@ class PvPListenerTest {
     @Mock private ProtectionManager protectionManager;
     @Mock private DebtManager debtManager;
     @Mock private NametagManager nametagManager;
+    @Mock private WorldManager worldManager;
+    @Mock private World overworldMock;
 
     @Mock private Player victim;
     @Mock private Player killer;
@@ -41,12 +44,15 @@ class PvPListenerTest {
     @BeforeEach
     void setUp() {
         pvpListener = new PvPListener(economy, criminalManager, combatManager,
-                protectionManager, debtManager, nametagManager, 0.33);
+                protectionManager, debtManager, nametagManager, worldManager, 0.33);
 
         lenient().when(victim.getUniqueId()).thenReturn(victimId);
         lenient().when(killer.getUniqueId()).thenReturn(killerId);
         lenient().when(victim.getName()).thenReturn("Victim");
         lenient().when(killer.getName()).thenReturn("Killer");
+        lenient().when(victim.getWorld()).thenReturn(overworldMock);
+        lenient().when(worldManager.isSafeWorld(overworldMock)).thenReturn(false);
+        lenient().when(worldManager.isInOverworld(victim)).thenReturn(false);
     }
 
     // =========================================
@@ -91,6 +97,19 @@ class PvPListenerTest {
 
         verify(event, never()).setCancelled(true);
         verify(combatManager).recordAttack(killerId, victimId);
+    }
+
+    @Test
+    void onDamage_safeWorld_cancelsPvP() {
+        EntityDamageByEntityEvent event = mock(EntityDamageByEntityEvent.class);
+        when(event.getEntity()).thenReturn(victim);
+        when(event.getDamager()).thenReturn(killer);
+        when(worldManager.isSafeWorld(overworldMock)).thenReturn(true);
+
+        pvpListener.onEntityDamageByEntity(event);
+
+        verify(event).setCancelled(true);
+        verify(combatManager, never()).recordAttack(any(), any());
     }
 
     @Test
@@ -222,6 +241,26 @@ class PvPListenerTest {
         pvpListener.onPlayerDeath(event);
 
         verify(nametagManager).setCriminal(killer);
+    }
+
+    @Test
+    void onDeath_inOverworld_allItemsDropped() {
+        PlayerDeathEvent event = createDeathEvent(killer);
+        when(worldManager.isInOverworld(victim)).thenReturn(true);
+        when(economy.getBalance(victim)).thenReturn(3000.0);
+        when(debtManager.isDebtor(victimId)).thenReturn(false);
+        when(criminalManager.isCriminal(victimId)).thenReturn(false);
+        when(combatManager.isInnocentKill(killerId, victimId)).thenReturn(true);
+        when(criminalManager.incrementInnocentKill(killerId)).thenReturn(false);
+        when(criminalManager.getInnocentKillCount(killerId)).thenReturn(1);
+
+        pvpListener.onPlayerDeath(event);
+
+        // オーバーワールドでは全員アイテム全ロスト
+        assertFalse(event.getKeepInventory());
+        assertFalse(event.getKeepLevel());
+        // デポジット没収
+        verify(worldManager).handleOverworldDeath(victim);
     }
 
     @Test

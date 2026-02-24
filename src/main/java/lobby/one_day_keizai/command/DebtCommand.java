@@ -92,6 +92,13 @@ public class DebtCommand implements CommandExecutor, TabCompleter {
             return;
         }
 
+        // 近接チェック（同じワールドで10ブロック以内）
+        if (!lender.getWorld().equals(borrower.getWorld())
+                || lender.getLocation().distance(borrower.getLocation()) > 10) {
+            lender.sendMessage(ChatColor.RED + "相手が近くにいません。10ブロック以内で実行してください。");
+            return;
+        }
+
         double amount;
         int minutes;
         double interestRate = 0;

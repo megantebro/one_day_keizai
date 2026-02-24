@@ -3,7 +3,9 @@ package lobby.one_day_keizai.command;
 import lobby.one_day_keizai.TestHelper;
 import lobby.one_day_keizai.manager.DebtManager;
 import net.milkbowl.vault.economy.Economy;
+import org.bukkit.Location;
 import org.bukkit.Server;
+import org.bukkit.World;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -28,6 +30,7 @@ class DebtCommandTest {
     @Mock private Player sender;
     @Mock private Player target;
     @Mock private Server server;
+    @Mock private World world;
 
     private DebtCommand debtCommand;
 
@@ -42,6 +45,12 @@ class DebtCommandTest {
         lenient().when(sender.getName()).thenReturn("Sender");
         lenient().when(target.getUniqueId()).thenReturn(targetId);
         lenient().when(target.getName()).thenReturn("Target");
+
+        // 近接チェック用：同じワールドで近くにいる状態をデフォルトに
+        lenient().when(sender.getWorld()).thenReturn(world);
+        lenient().when(target.getWorld()).thenReturn(world);
+        lenient().when(sender.getLocation()).thenReturn(new Location(world, 0, 64, 0));
+        lenient().when(target.getLocation()).thenReturn(new Location(world, 5, 64, 0));
     }
 
     @AfterEach

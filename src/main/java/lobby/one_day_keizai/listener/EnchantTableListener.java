@@ -13,6 +13,9 @@ import org.bukkit.event.enchantment.PrepareItemEnchantEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.block.Action;
 
+import java.util.EnumSet;
+import java.util.Set;
+
 /**
  * エンチャントテーブルの使用を鍛冶屋・エンチャンターのみに制限する。
  * <p>
@@ -45,18 +48,43 @@ public class EnchantTableListener implements Listener {
         }
     }
 
+    /** 本棚ボーナス無効化の対象: 防具・武器のみ */
+    private static final Set<Material> ARMOR_AND_WEAPONS = EnumSet.of(
+        // 剣
+        Material.WOODEN_SWORD, Material.STONE_SWORD, Material.IRON_SWORD,
+        Material.GOLDEN_SWORD, Material.DIAMOND_SWORD, Material.NETHERITE_SWORD,
+        // 防具: ヘルメット
+        Material.LEATHER_HELMET, Material.CHAINMAIL_HELMET, Material.IRON_HELMET,
+        Material.GOLDEN_HELMET, Material.DIAMOND_HELMET, Material.NETHERITE_HELMET,
+        Material.TURTLE_HELMET,
+        // 防具: チェストプレート
+        Material.LEATHER_CHESTPLATE, Material.CHAINMAIL_CHESTPLATE, Material.IRON_CHESTPLATE,
+        Material.GOLDEN_CHESTPLATE, Material.DIAMOND_CHESTPLATE, Material.NETHERITE_CHESTPLATE,
+        // 防具: レギンス
+        Material.LEATHER_LEGGINGS, Material.CHAINMAIL_LEGGINGS, Material.IRON_LEGGINGS,
+        Material.GOLDEN_LEGGINGS, Material.DIAMOND_LEGGINGS, Material.NETHERITE_LEGGINGS,
+        // 防具: ブーツ
+        Material.LEATHER_BOOTS, Material.CHAINMAIL_BOOTS, Material.IRON_BOOTS,
+        Material.GOLDEN_BOOTS, Material.DIAMOND_BOOTS, Material.NETHERITE_BOOTS,
+        // 盾
+        Material.SHIELD
+    );
+
     /**
      * エンチャンター向け本棚ボーナス無効化。
-     * 本棚がある環境でもレベル上限を 8 にキャップする。
+     * 防具・武器のエンチャントに限り、本棚ありでもレベル上限を 8 にキャップ。
+     * ツール類（ピッケル・斧・シャベル等）は本棚の恩恵を受けられる。
      */
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onPrepareItemEnchant(PrepareItemEnchantEvent event) {
         if (!(event.getEnchanter() instanceof Player)) return;
         Player player = (Player) event.getEnchanter();
         if (!jobManager.isEnchanter(player.getUniqueId())) return;
-
-        // 本棚ボーナスが存在する場合にオファーコストを 8 以下にキャップ
         if (event.getEnchantmentBonus() <= 0) return;
+
+        // ツール類は制限なし
+        Material itemType = event.getItem().getType();
+        if (!ARMOR_AND_WEAPONS.contains(itemType)) return;
 
         EnchantmentOffer[] offers = event.getOffers();
         if (offers == null) return;
@@ -68,7 +96,7 @@ public class EnchantTableListener implements Listener {
             }
         }
         if (capped) {
-            player.sendMessage(ChatColor.YELLOW + "エンチャンターは本棚の恩恵を受けられません（上限 Lv.8）。");
+            player.sendMessage(ChatColor.YELLOW + "防具・武器のエンチャントは本棚の恩恵を受けられません（上限 Lv.8）。");
         }
     }
 }

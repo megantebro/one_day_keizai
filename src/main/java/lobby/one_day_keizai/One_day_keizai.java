@@ -87,7 +87,7 @@ public final class One_day_keizai extends JavaPlugin {
                 this, economy, playerDataManager,
                 safeWorldName, overworldName, overworldEntryFee, overworldRefundRatio);
 
-        WantedManager wantedManager = new WantedManager(this, nametagManager, economy, wantedDurationSeconds);
+        WantedManager wantedManager = new WantedManager(this, nametagManager, economy, playerDataManager, wantedDurationSeconds);
 
         LogoutManager logoutManager = new LogoutManager(
                 playerDataManager, combatManager,

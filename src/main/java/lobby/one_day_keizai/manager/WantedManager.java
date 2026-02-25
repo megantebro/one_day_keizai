@@ -1,5 +1,6 @@
 package lobby.one_day_keizai.manager;
 
+import lobby.one_day_keizai.data.PlayerDataManager;
 import net.milkbowl.vault.economy.Economy;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -35,6 +36,7 @@ public class WantedManager {
     private final JavaPlugin plugin;
     private final NametagManager nametagManager;
     private final Economy economy;
+    private final PlayerDataManager playerDataManager;
     private final int wantedDurationSeconds;
 
     /** 現在指名手配中のプレイヤー */
@@ -42,15 +44,18 @@ public class WantedManager {
 
     /**
      * 時効成立後、安全ワールド帰還時に支払う懸賞金の未払いキュー。
+     * デポジットは expireWanted 時点でクリア済みなので二重払いなし。
      * key=UUID, value=懸賞金額
      */
     private final Map<UUID, Double> pendingPayouts = new ConcurrentHashMap<>();
 
     public WantedManager(JavaPlugin plugin, NametagManager nametagManager,
-                         Economy economy, int wantedDurationSeconds) {
+                         Economy economy, PlayerDataManager playerDataManager,
+                         int wantedDurationSeconds) {
         this.plugin = plugin;
         this.nametagManager = nametagManager;
         this.economy = economy;
+        this.playerDataManager = playerDataManager;
         this.wantedDurationSeconds = wantedDurationSeconds;
     }
 
@@ -87,25 +92,33 @@ public class WantedManager {
 
     /**
      * 時効による指名手配解除。
-     * 懸賞金は物理アイテムではなく「未払いキュー」に積む。
-     * 安全ワールドに帰還した際に WantedListener が自動入金する。
+     *
+     * デポジットを playerdata から即クリアして pendingPayouts に移す。
+     * これにより returnToSafeWorld での通常返金は 0 になり、
+     * 安全ワールド帰還時に pendingPayouts 分だけ支払われる（二重払いなし）。
      */
     private void expireWanted(UUID uuid) {
         WantedEntry entry = wantedPlayers.remove(uuid);
         if (entry == null) return;
 
-        // 未払いキューに懸賞金を積む
-        if (entry.bounty > 0) {
-            pendingPayouts.merge(uuid, entry.bounty, Double::sum);
+        // デポジットを playerdata からクリアし、pending payout に移す
+        // (returnToSafeWorld での通常返金を防ぐため)
+        double deposit = playerDataManager.getOverworldDeposit(uuid);
+        playerDataManager.clearOverworldDeposit(uuid);
+        playerDataManager.save();
+
+        double payout = deposit > 0 ? deposit : entry.bounty;
+        if (payout > 0) {
+            pendingPayouts.merge(uuid, payout, Double::sum);
         }
 
         Player player = Bukkit.getPlayer(uuid);
         if (player != null) {
             nametagManager.clearWanted(player);
             player.sendMessage(ChatColor.GREEN + "指名手配の時効が成立しました！");
-            player.sendMessage(ChatColor.YELLOW + "安全ワールドに帰還すると懸賞金 "
-                    + ChatColor.GOLD + "$" + String.format("%.0f", entry.bounty)
-                    + ChatColor.YELLOW + " が支払われます。");
+            player.sendMessage(ChatColor.YELLOW + "安全ワールドに帰還すると入場料 "
+                    + ChatColor.GOLD + "$" + String.format("%.0f", payout)
+                    + ChatColor.YELLOW + " が全額返金されます。");
         }
     }
 

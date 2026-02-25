@@ -1,8 +1,11 @@
 package lobby.one_day_keizai.listener;
 
+import lobby.one_day_keizai.job.Job;
+import lobby.one_day_keizai.job.JobManager;
 import lobby.one_day_keizai.manager.LogoutManager;
 import lobby.one_day_keizai.manager.NametagManager;
 import lobby.one_day_keizai.manager.WorldManager;
+import lobby.one_day_keizai.ui.JobSelectionUI;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.World;
@@ -13,6 +16,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
+import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.UUID;
 
@@ -21,12 +25,16 @@ public class PlayerListener implements Listener {
     private final LogoutManager logoutManager;
     private final NametagManager nametagManager;
     private final WorldManager worldManager;
+    private final JobManager jobManager;
+    private final JavaPlugin plugin;
 
     public PlayerListener(LogoutManager logoutManager, NametagManager nametagManager,
-                          WorldManager worldManager) {
+                          WorldManager worldManager, JobManager jobManager, JavaPlugin plugin) {
         this.logoutManager = logoutManager;
         this.nametagManager = nametagManager;
         this.worldManager = worldManager;
+        this.jobManager = jobManager;
+        this.plugin = plugin;
     }
 
     @EventHandler(priority = EventPriority.NORMAL)
@@ -42,6 +50,15 @@ public class PlayerListener implements Listener {
         // 初回参加メッセージ
         if (!player.hasPlayedBefore()) {
             player.sendMessage(ChatColor.AQUA + "One Day Keizai サーバーへようこそ！");
+        }
+
+        // 職業未選択なら職業選択UIを表示（20ticksディレイ: ロード完了後に開く）
+        if (jobManager.getJob(player.getUniqueId()) == Job.NONE) {
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                if (player.isOnline()) {
+                    JobSelectionUI.open(player);
+                }
+            }, 20L);
         }
     }
 

@@ -85,7 +85,8 @@ public final class One_day_keizai extends JavaPlugin {
                         protectionManager, debtManager, nametagManager, worldManager,
                         logoutManager, playerDataManager, moneyStealRatio), this);
         Bukkit.getPluginManager().registerEvents(
-                new PlayerListener(logoutManager, nametagManager, worldManager), this);
+                new PlayerListener(logoutManager, nametagManager, worldManager, jobManager, this), this);
+        Bukkit.getPluginManager().registerEvents(new JobSelectionListener(jobManager), this);
         Bukkit.getPluginManager().registerEvents(new WorldListener(), this);
         Bukkit.getPluginManager().registerEvents(new WantedListener(worldManager, economy), this);
         Bukkit.getPluginManager().registerEvents(new JobCraftListener(jobManager), this);

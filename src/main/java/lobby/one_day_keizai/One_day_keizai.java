@@ -87,7 +87,7 @@ public final class One_day_keizai extends JavaPlugin {
                 this, economy, playerDataManager,
                 safeWorldName, overworldName, overworldEntryFee, overworldRefundRatio);
 
-        WantedManager wantedManager = new WantedManager(this, nametagManager, wantedDurationSeconds);
+        WantedManager wantedManager = new WantedManager(this, nametagManager, economy, wantedDurationSeconds);
 
         LogoutManager logoutManager = new LogoutManager(
                 playerDataManager, combatManager,
@@ -114,7 +114,7 @@ public final class One_day_keizai extends JavaPlugin {
                 new PlayerListener(logoutManager, nametagManager, worldManager, jobManager, this), this);
         Bukkit.getPluginManager().registerEvents(new JobSelectionListener(jobManager), this);
         Bukkit.getPluginManager().registerEvents(new WorldListener(), this);
-        Bukkit.getPluginManager().registerEvents(new WantedListener(worldManager, economy), this);
+        Bukkit.getPluginManager().registerEvents(new WantedListener(worldManager, wantedManager), this);
         Bukkit.getPluginManager().registerEvents(new JobCraftListener(jobManager), this);
         Bukkit.getPluginManager().registerEvents(
                 new JobFarmListener(jobManager, safeWorldName), this);

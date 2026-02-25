@@ -86,9 +86,9 @@ public class JobCommand implements CommandExecutor, TabCompleter {
             return;
         }
 
-        // 上級職の場合は基本職に戻すことを確認してからセット
+        // 上級職から基本職への変更は不可
         if (current.isUpperTier()) {
-            player.sendMessage(ChatColor.RED + "上級職から基本職への変更はできません。/job promote で昇格してください。");
+            player.sendMessage(ChatColor.RED + "上級職から基本職への変更はできません。");
             return;
         }
 
@@ -198,12 +198,10 @@ public class JobCommand implements CommandExecutor, TabCompleter {
             player.sendMessage(job.getColorCode() + "  " + job.getDisplayName()
                     + ChatColor.WHITE + " - " + getJobSummary(job));
         }
-        player.sendMessage(ChatColor.GRAY + "【上級職】 (/job promote で昇格, 費用: " + formatMoney(promoteFee) + " G)");
-        for (Job job : new Job[]{Job.CAPITALIST, Job.ENCHANTER, Job.WEALTHY_MERCHANT}) {
-            player.sendMessage(job.getColorCode() + "  " + job.getDisplayName()
-                    + ChatColor.GRAY + " ← " + job.getBaseJob().getDisplayName()
-                    + ChatColor.WHITE + " - " + getJobSummary(job));
-        }
+        player.sendMessage(ChatColor.GRAY + "【上級職】 (鍛冶屋が /job promote で昇格, 費用: " + formatMoney(promoteFee) + " G)");
+        player.sendMessage(Job.ENCHANTER.getColorCode() + "  " + Job.ENCHANTER.getDisplayName()
+                + ChatColor.GRAY + " ← " + Job.BLACKSMITH.getDisplayName()
+                + ChatColor.WHITE + " - " + getJobSummary(Job.ENCHANTER));
         player.sendMessage(ChatColor.YELLOW + "/job select <farmer|blacksmith|merchant> で職業を選択");
     }
 

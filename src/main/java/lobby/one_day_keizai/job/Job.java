@@ -44,14 +44,12 @@ public enum Job {
     }
 
     /**
-     * 基本職からその上級職を返す。NONE / 既に上級職なら null。
-     * 例: FARMER → CAPITALIST
+     * 基本職からその上級職を返す。
+     * 現在は鍛冶屋 → エンチャンターのみ昇格可能。
      */
     public Job getUpperJob() {
         return switch (this) {
-            case FARMER     -> CAPITALIST;
             case BLACKSMITH -> ENCHANTER;
-            case MERCHANT   -> WEALTHY_MERCHANT;
             default         -> null;
         };
     }

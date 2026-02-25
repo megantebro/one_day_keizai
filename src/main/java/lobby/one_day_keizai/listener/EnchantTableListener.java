@@ -93,6 +93,16 @@ public class EnchantTableListener implements Listener {
 
         EnchantmentOffer[] offers = event.getOffers();
         if (offers == null) return;
+        // DEBUG: 本棚ボーナスとオファーを出力
+        java.util.logging.Logger.getLogger("one_day_keizai").info(
+            "[EnchantDebug] player=" + player.getName()
+            + " bonus=" + event.getEnchantmentBonus()
+            + " item=" + itemType
+            + " offers=" + java.util.Arrays.toString(
+                java.util.Arrays.stream(offers)
+                    .map(o -> o == null ? "null" : o.getCost() + "")
+                    .toArray(String[]::new)));
+
         boolean capped = false;
         for (EnchantmentOffer offer : offers) {
             if (offer != null && offer.getCost() > 8) {

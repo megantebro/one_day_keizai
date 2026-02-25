@@ -99,15 +99,18 @@ class JobTest {
     // ─── getUpperJob ─────────────────────────────────────────────────────────
 
     @Test
-    void getUpperJob_basicJobReturnsUpper() {
-        assertEquals(Job.CAPITALIST, Job.FARMER.getUpperJob());
+    void getUpperJob_onlyBlacksmithCanPromote() {
+        // 鍛冶屋のみエンチャンターへの昇格パスを持つ
+        assertNull(Job.FARMER.getUpperJob());
         assertEquals(Job.ENCHANTER, Job.BLACKSMITH.getUpperJob());
-        assertEquals(Job.WEALTHY_MERCHANT, Job.MERCHANT.getUpperJob());
+        assertNull(Job.MERCHANT.getUpperJob());
     }
 
     @Test
-    void getUpperJob_noneAndUpperReturnsNull() {
+    void getUpperJob_nonPromotableJobsReturnNull() {
         assertNull(Job.NONE.getUpperJob());
+        assertNull(Job.FARMER.getUpperJob());
+        assertNull(Job.MERCHANT.getUpperJob());
         assertNull(Job.CAPITALIST.getUpperJob());
         assertNull(Job.ENCHANTER.getUpperJob());
         assertNull(Job.WEALTHY_MERCHANT.getUpperJob());

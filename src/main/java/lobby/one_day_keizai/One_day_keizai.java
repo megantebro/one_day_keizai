@@ -107,7 +107,7 @@ public final class One_day_keizai extends JavaPlugin {
         Bukkit.getPluginManager().registerEvents(
                 new PvPListener(economy, wantedManager, combatManager,
                         nametagManager, worldManager,
-                        logoutManager, playerDataManager), this);
+                        logoutManager, playerDataManager, jobManager), this);
         Bukkit.getPluginManager().registerEvents(
                 new PlayerListener(logoutManager, nametagManager, worldManager, jobManager, this), this);
         Bukkit.getPluginManager().registerEvents(new JobSelectionListener(jobManager, nametagManager), this);

@@ -3,6 +3,7 @@ package lobby.one_day_keizai.listener;
 import lobby.one_day_keizai.data.PlayerDataManager;
 import lobby.one_day_keizai.manager.*;
 import net.milkbowl.vault.economy.Economy;
+import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
@@ -32,6 +33,7 @@ class PvPListenerTest {
     @Mock private WorldManager worldManager;
     @Mock private LogoutManager logoutManager;
     @Mock private PlayerDataManager playerDataManager;
+    @Mock private lobby.one_day_keizai.job.JobManager jobManager;
     @Mock private World overworldMock;
 
     @Mock private Player victim;
@@ -46,7 +48,7 @@ class PvPListenerTest {
     void setUp() {
         pvpListener = new PvPListener(economy, wantedManager, combatManager,
                 nametagManager, worldManager,
-                logoutManager, playerDataManager);
+                logoutManager, playerDataManager, jobManager);
 
         lenient().when(victim.getUniqueId()).thenReturn(victimId);
         lenient().when(killer.getUniqueId()).thenReturn(killerId);
@@ -193,6 +195,46 @@ class PvPListenerTest {
         pvpListener.onPlayerDeath(event);
 
         verify(combatManager).clearCombatData(victimId, killerId);
+    }
+
+    // --- 鍛冶屋ツールロスト防止 ---
+
+    @Test
+    void onDeath_blacksmith_toolsRemovedFromDrops() {
+        // ドロップにツール + 非ツールを用意
+        List<ItemStack> drops = new ArrayList<>();
+        drops.add(new ItemStack(Material.DIAMOND_PICKAXE));
+        drops.add(new ItemStack(Material.DIAMOND_SWORD));
+        drops.add(new ItemStack(Material.IRON_SHOVEL));
+        PlayerDeathEvent event = new PlayerDeathEvent(victim, drops, 0, "death");
+        lenient().when(victim.getKiller()).thenReturn(null);
+        when(worldManager.isInOverworld(victim)).thenReturn(true);
+        when(jobManager.isBlacksmith(victimId)).thenReturn(true);
+
+        pvpListener.onPlayerDeath(event);
+
+        // ツール2個はドロップから除去されている
+        List<Material> remaining = event.getDrops().stream()
+                .map(ItemStack::getType).toList();
+        assertFalse(remaining.contains(Material.DIAMOND_PICKAXE));
+        assertFalse(remaining.contains(Material.IRON_SHOVEL));
+        // 剣は通常通りドロップ
+        assertTrue(remaining.contains(Material.DIAMOND_SWORD));
+    }
+
+    @Test
+    void onDeath_nonBlacksmith_toolsDropped() {
+        List<ItemStack> drops = new ArrayList<>();
+        drops.add(new ItemStack(Material.DIAMOND_PICKAXE));
+        PlayerDeathEvent event = new PlayerDeathEvent(victim, drops, 0, "death");
+        lenient().when(victim.getKiller()).thenReturn(null);
+        when(worldManager.isInOverworld(victim)).thenReturn(true);
+        when(jobManager.isBlacksmith(victimId)).thenReturn(false);
+
+        pvpListener.onPlayerDeath(event);
+
+        assertTrue(event.getDrops().stream()
+                .anyMatch(i -> i.getType() == Material.DIAMOND_PICKAXE));
     }
 
     // =========================================

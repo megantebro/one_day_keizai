@@ -2,6 +2,7 @@ package lobby.one_day_keizai.command;
 
 import lobby.one_day_keizai.job.Job;
 import lobby.one_day_keizai.job.JobManager;
+import lobby.one_day_keizai.manager.NametagManager;
 import net.milkbowl.vault.economy.Economy;
 import net.milkbowl.vault.economy.EconomyResponse;
 import org.bukkit.ChatColor;
@@ -22,6 +23,7 @@ public class JobCommand implements CommandExecutor, TabCompleter {
 
     private final JobManager jobManager;
     private final Economy economy;
+    private final NametagManager nametagManager;
     private final double promoteFee;
     private final double shopFee;
     private final Location wealthyMerchantShop;
@@ -29,11 +31,12 @@ public class JobCommand implements CommandExecutor, TabCompleter {
     /**
      * @param wealthyMerchantShop 豪商ショップのTP先。null の場合はコマンド使用不可。
      */
-    public JobCommand(JobManager jobManager, Economy economy,
+    public JobCommand(JobManager jobManager, Economy economy, NametagManager nametagManager,
                       double promoteFee, double shopFee,
                       Location wealthyMerchantShop) {
         this.jobManager = jobManager;
         this.economy = economy;
+        this.nametagManager = nametagManager;
         this.promoteFee = promoteFee;
         this.shopFee = shopFee;
         this.wealthyMerchantShop = wealthyMerchantShop;
@@ -90,6 +93,7 @@ public class JobCommand implements CommandExecutor, TabCompleter {
         }
 
         jobManager.setJob(player.getUniqueId(), job);
+        nametagManager.refreshJob(player);
         player.sendMessage(ChatColor.GREEN + "職業を " + job.getColorCode() + job.getDisplayName() + ChatColor.GREEN + " に変更しました。");
         sendJobDescription(player, job);
     }
@@ -129,6 +133,7 @@ public class JobCommand implements CommandExecutor, TabCompleter {
         }
 
         jobManager.setJob(player.getUniqueId(), upper);
+        nametagManager.refreshJob(player);
         player.sendMessage(ChatColor.GOLD + "━━━━━━━━━━━━━━━━━━━━━━━━━━━");
         player.sendMessage(ChatColor.YELLOW + "  上級職に昇格しました！");
         player.sendMessage(ChatColor.WHITE + "  " + current.getColorCode() + current.getDisplayName()

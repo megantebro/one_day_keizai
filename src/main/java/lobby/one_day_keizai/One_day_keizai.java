@@ -79,6 +79,7 @@ public final class One_day_keizai extends JavaPlugin {
 
         // マネージャー初期化
         NametagManager nametagManager = new NametagManager();
+        nametagManager.setJobManager(jobManager);
         CombatManager combatManager = new CombatManager(combatLogoutSeconds);
         ProtectionManager protectionManager = new ProtectionManager(
                 this, nametagManager, respawnProtectionSeconds);
@@ -112,7 +113,7 @@ public final class One_day_keizai extends JavaPlugin {
                         logoutManager, playerDataManager), this);
         Bukkit.getPluginManager().registerEvents(
                 new PlayerListener(logoutManager, nametagManager, worldManager, jobManager, this), this);
-        Bukkit.getPluginManager().registerEvents(new JobSelectionListener(jobManager), this);
+        Bukkit.getPluginManager().registerEvents(new JobSelectionListener(jobManager, nametagManager), this);
         Bukkit.getPluginManager().registerEvents(new WorldListener(), this);
         Bukkit.getPluginManager().registerEvents(new WantedListener(worldManager, wantedManager), this);
         Bukkit.getPluginManager().registerEvents(new JobCraftListener(jobManager), this);
@@ -136,7 +137,7 @@ public final class One_day_keizai extends JavaPlugin {
         OverworldCommand overworldCommand = new OverworldCommand(worldManager, wantedManager);
         getCommand("ow").setExecutor(overworldCommand);
         getCommand("ow").setTabCompleter(overworldCommand);
-        JobCommand jobCommand = new JobCommand(jobManager, economy,
+        JobCommand jobCommand = new JobCommand(jobManager, economy, nametagManager,
                 jobPromoteFee, wealthyMerchantShopFee, wealthyMerchantShopLocation);
         getCommand("job").setExecutor(jobCommand);
         getCommand("job").setTabCompleter(jobCommand);

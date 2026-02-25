@@ -2,6 +2,7 @@ package lobby.one_day_keizai.listener;
 
 import lobby.one_day_keizai.job.Job;
 import lobby.one_day_keizai.job.JobManager;
+import lobby.one_day_keizai.manager.NametagManager;
 import lobby.one_day_keizai.ui.JobSelectionUI;
 import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
@@ -17,9 +18,11 @@ import org.bukkit.event.inventory.InventoryDragEvent;
 public class JobSelectionListener implements Listener {
 
     private final JobManager jobManager;
+    private final NametagManager nametagManager;
 
-    public JobSelectionListener(JobManager jobManager) {
+    public JobSelectionListener(JobManager jobManager, NametagManager nametagManager) {
         this.jobManager = jobManager;
+        this.nametagManager = nametagManager;
     }
 
     @EventHandler(priority = EventPriority.HIGH)
@@ -46,6 +49,7 @@ public class JobSelectionListener implements Listener {
         if (job == null) return; // 関係ないスロット
 
         jobManager.setJob(player.getUniqueId(), job);
+        nametagManager.refreshJob(player);
         player.closeInventory();
 
         player.sendMessage(ChatColor.GREEN + "══════════════════════════════");

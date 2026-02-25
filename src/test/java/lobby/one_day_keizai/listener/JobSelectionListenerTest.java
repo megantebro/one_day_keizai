@@ -2,6 +2,7 @@ package lobby.one_day_keizai.listener;
 
 import lobby.one_day_keizai.job.Job;
 import lobby.one_day_keizai.job.JobManager;
+import lobby.one_day_keizai.manager.NametagManager;
 import lobby.one_day_keizai.ui.JobSelectionUI;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryAction;
@@ -23,6 +24,7 @@ import static org.mockito.Mockito.*;
 class JobSelectionListenerTest {
 
     @Mock private JobManager jobManager;
+    @Mock private NametagManager nametagManager;
     @Mock private Player player;
     @Mock private InventoryView view;
     @Mock private Inventory inventory;
@@ -32,7 +34,7 @@ class JobSelectionListenerTest {
 
     @BeforeEach
     void setUp() {
-        listener = new JobSelectionListener(jobManager);
+        listener = new JobSelectionListener(jobManager, nametagManager);
         lenient().when(player.getUniqueId()).thenReturn(playerId);
     }
 

@@ -25,12 +25,11 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class NametagManager {
 
-    private static final ChatColor COLOR_WANTED   = ChatColor.GOLD;
-    private static final ChatColor COLOR_PROTECTED = ChatColor.GREEN;
-    private static final ChatColor COLOR_NORMAL    = ChatColor.WHITE;
+    private static final ChatColor COLOR_WANTED = ChatColor.GOLD;
+    private static final ChatColor COLOR_NORMAL = ChatColor.WHITE;
 
     /** ステータス識別子 */
-    private enum Status { NORMAL, WANTED, PROTECTED }
+    private enum Status { NORMAL, WANTED }
 
     private final Scoreboard scoreboard;
 
@@ -73,19 +72,9 @@ public class NametagManager {
         setWanted(player);
     }
 
-    public void setProtected(Player player) {
-        statusMap.put(player.getUniqueId(), Status.PROTECTED);
-        refresh(player);
-    }
-
-    /**
-     * ステータスを直接指定して更新する。
-     * ProtectionManager / WantedManager からの呼び出し用。
-     */
-    public void updateNametag(Player player, boolean isWanted, boolean isProtected) {
-        if (isProtected) {
-            setProtected(player);
-        } else if (isWanted) {
+    /** ステータスを直接指定して更新する。 */
+    public void updateNametag(Player player, boolean isWanted) {
+        if (isWanted) {
             setWanted(player);
         } else {
             setNormal(player);
@@ -111,9 +100,8 @@ public class NametagManager {
         Job job = jobManager != null ? jobManager.getJob(uuid) : Job.NONE;
 
         ChatColor nameColor = switch (status) {
-            case WANTED    -> COLOR_WANTED;
-            case PROTECTED -> COLOR_PROTECTED;
-            default        -> COLOR_NORMAL;
+            case WANTED -> COLOR_WANTED;
+            default     -> COLOR_NORMAL;
         };
 
         String prefix = buildPrefix(job);

@@ -43,7 +43,6 @@ public final class One_day_keizai extends JavaPlugin {
         }
 
         // 設定値読み込み
-        int respawnProtectionSeconds = getConfig().getInt("respawn-protection-seconds", 600);
         int combatLogoutSeconds = getConfig().getInt("combat-logout-seconds", 30);
         int logoutGraceMinutes = getConfig().getInt("logout-grace-minutes", 15);
         int wantedDurationSeconds = getConfig().getInt("wanted-duration-seconds", 1800); // 30分
@@ -81,8 +80,6 @@ public final class One_day_keizai extends JavaPlugin {
         NametagManager nametagManager = new NametagManager();
         nametagManager.setJobManager(jobManager);
         CombatManager combatManager = new CombatManager(combatLogoutSeconds);
-        ProtectionManager protectionManager = new ProtectionManager(
-                this, nametagManager, respawnProtectionSeconds);
 
         WorldManager worldManager = new WorldManager(
                 this, economy, playerDataManager,
@@ -109,7 +106,7 @@ public final class One_day_keizai extends JavaPlugin {
         // リスナー登録
         Bukkit.getPluginManager().registerEvents(
                 new PvPListener(economy, wantedManager, combatManager,
-                        protectionManager, nametagManager, worldManager,
+                        nametagManager, worldManager,
                         logoutManager, playerDataManager), this);
         Bukkit.getPluginManager().registerEvents(
                 new PlayerListener(logoutManager, nametagManager, worldManager, jobManager, this), this);

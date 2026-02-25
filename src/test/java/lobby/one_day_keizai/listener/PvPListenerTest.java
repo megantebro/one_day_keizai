@@ -28,7 +28,6 @@ class PvPListenerTest {
     @Mock private Economy economy;
     @Mock private WantedManager wantedManager;
     @Mock private CombatManager combatManager;
-    @Mock private ProtectionManager protectionManager;
     @Mock private NametagManager nametagManager;
     @Mock private WorldManager worldManager;
     @Mock private LogoutManager logoutManager;
@@ -46,7 +45,7 @@ class PvPListenerTest {
     @BeforeEach
     void setUp() {
         pvpListener = new PvPListener(economy, wantedManager, combatManager,
-                protectionManager, nametagManager, worldManager,
+                nametagManager, worldManager,
                 logoutManager, playerDataManager);
 
         lenient().when(victim.getUniqueId()).thenReturn(victimId);
@@ -66,38 +65,10 @@ class PvPListenerTest {
     // =========================================
 
     @Test
-    void onDamage_victimProtected_cancelsDamage() {
+    void onDamage_recordsAttack() {
         EntityDamageByEntityEvent event = mock(EntityDamageByEntityEvent.class);
         when(event.getEntity()).thenReturn(victim);
         when(event.getDamager()).thenReturn(killer);
-        when(protectionManager.isProtected(victimId)).thenReturn(true);
-
-        pvpListener.onEntityDamageByEntity(event);
-
-        verify(event).setCancelled(true);
-        verify(combatManager, never()).recordAttack(any(), any());
-    }
-
-    @Test
-    void onDamage_attackerProtected_cancelsDamage() {
-        EntityDamageByEntityEvent event = mock(EntityDamageByEntityEvent.class);
-        when(event.getEntity()).thenReturn(victim);
-        when(event.getDamager()).thenReturn(killer);
-        when(protectionManager.isProtected(victimId)).thenReturn(false);
-        when(protectionManager.isProtected(killerId)).thenReturn(true);
-
-        pvpListener.onEntityDamageByEntity(event);
-
-        verify(event).setCancelled(true);
-    }
-
-    @Test
-    void onDamage_noProtection_recordsAttack() {
-        EntityDamageByEntityEvent event = mock(EntityDamageByEntityEvent.class);
-        when(event.getEntity()).thenReturn(victim);
-        when(event.getDamager()).thenReturn(killer);
-        when(protectionManager.isProtected(victimId)).thenReturn(false);
-        when(protectionManager.isProtected(killerId)).thenReturn(false);
 
         pvpListener.onEntityDamageByEntity(event);
 
@@ -139,7 +110,6 @@ class PvPListenerTest {
 
         pvpListener.onPlayerDeath(event);
 
-        // 非PvP死亡: 所持金追加没収なし（デポジットはhandleOverworldDeathで没収済み）
         verify(economy, never()).withdrawPlayer(any(Player.class), anyDouble());
         verify(economy, never()).depositPlayer(any(Player.class), anyDouble());
         assertTrue(event.getKeepInventory());
@@ -201,7 +171,6 @@ class PvPListenerTest {
 
         pvpListener.onPlayerDeath(event);
 
-        // 既に指名手配中なら既存の懸賞金でタイマーリセット
         verify(wantedManager).makeWanted(killer, 800.0);
     }
 

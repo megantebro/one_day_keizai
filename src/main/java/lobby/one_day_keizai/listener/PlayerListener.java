@@ -42,7 +42,7 @@ public class PlayerListener implements Listener {
         Player player = event.getPlayer();
 
         // ネームタグ設定（指名手配はメモリ管理のため、再接続時は通常扱い）
-        nametagManager.updateNametag(player, false, false);
+        nametagManager.updateNametag(player, false);
 
         // ログアウトペナルティチェック
         logoutManager.handleLogin(player);

@@ -19,14 +19,20 @@ public class JobCraftListener implements Listener {
     private final JobManager jobManager;
 
     /**
-     * 鍛冶屋専用クラフトアイテム一覧（剣・防具・盾のみ。ツール類は誰でもクラフト可）
+     * 鍛冶屋専用クラフトアイテム一覧（剣・ツール・防具・盾）
+     * ツール類は死亡時にロストしないが、クラフトは鍛冶屋のみ。
      */
     private static final Set<Material> BLACKSMITH_ONLY_ITEMS = EnumSet.of(
         // 剣
-        Material.IRON_SWORD,
-        Material.GOLDEN_SWORD,
-        Material.DIAMOND_SWORD,
-        Material.NETHERITE_SWORD,
+        Material.IRON_SWORD, Material.GOLDEN_SWORD, Material.DIAMOND_SWORD, Material.NETHERITE_SWORD,
+        // ツール: ピッケル
+        Material.IRON_PICKAXE, Material.GOLDEN_PICKAXE, Material.DIAMOND_PICKAXE, Material.NETHERITE_PICKAXE,
+        // ツール: シャベル
+        Material.IRON_SHOVEL, Material.GOLDEN_SHOVEL, Material.DIAMOND_SHOVEL, Material.NETHERITE_SHOVEL,
+        // ツール: 斧
+        Material.IRON_AXE, Material.GOLDEN_AXE, Material.DIAMOND_AXE, Material.NETHERITE_AXE,
+        // ツール: クワ
+        Material.IRON_HOE, Material.GOLDEN_HOE, Material.DIAMOND_HOE, Material.NETHERITE_HOE,
         // 防具: ヘルメット
         Material.IRON_HELMET, Material.GOLDEN_HELMET, Material.DIAMOND_HELMET, Material.NETHERITE_HELMET,
         // 防具: チェストプレート

@@ -24,13 +24,11 @@ public class PvPListener implements Listener {
     private final WorldManager worldManager;
     private final LogoutManager logoutManager;
     private final PlayerDataManager playerDataManager;
-    private final double moneyStealRatio;
 
     public PvPListener(Economy economy, WantedManager wantedManager, CombatManager combatManager,
                        ProtectionManager protectionManager,
                        NametagManager nametagManager, WorldManager worldManager,
-                       LogoutManager logoutManager, PlayerDataManager playerDataManager,
-                       double moneyStealRatio) {
+                       LogoutManager logoutManager, PlayerDataManager playerDataManager) {
         this.economy = economy;
         this.wantedManager = wantedManager;
         this.combatManager = combatManager;
@@ -39,7 +37,6 @@ public class PvPListener implements Listener {
         this.worldManager = worldManager;
         this.logoutManager = logoutManager;
         this.playerDataManager = playerDataManager;
-        this.moneyStealRatio = moneyStealRatio;
     }
 
     @EventHandler(priority = EventPriority.HIGH)
@@ -102,7 +99,10 @@ public class PvPListener implements Listener {
             event.setDroppedExp(0);
         }
 
-        // オーバーワールド死亡: デポジット没収
+        // デポジットをキラーに渡すためにクリア前に取得
+        double victimDeposit = playerDataManager.getOverworldDeposit(victimId);
+
+        // オーバーワールド死亡: デポジット没収（クリア）
         if (inOverworld) {
             worldManager.handleOverworldDeath(victim);
         }
@@ -118,16 +118,7 @@ public class PvPListener implements Listener {
         Player killer = victim.getKiller();
 
         if (killer == null) {
-            // --- 非PvP死亡: 所持金の一部没収 ---
-            double balance = economy.getBalance(victim);
-            double penalty = balance * moneyStealRatio;
-            if (penalty > 0) {
-                economy.withdrawPlayer(victim, penalty);
-                victim.sendMessage(ChatColor.RED + "所持金の"
-                        + String.format("%.0f%%", moneyStealRatio * 100) + "（"
-                        + String.format("%.0f", penalty) + "）を失いました。");
-            }
-            // 指名手配解除 (非PvP死は時効ではなく単純解除)
+            // --- 非PvP死亡: デポジットは没収済み（追加ペナルティなし） ---
             wantedManager.clearWanted(victimId);
             combatManager.clearAllData(victimId);
             return;
@@ -140,16 +131,13 @@ public class PvPListener implements Listener {
             wantedManager.handleWantedDeath(victim, killer);
         }
 
-        // --- 金銭処理 ---
-        double victimBalance = economy.getBalance(victim);
-        double stolenAmount = victimBalance * moneyStealRatio;
-        if (stolenAmount > 0) {
-            economy.withdrawPlayer(victim, stolenAmount);
-            economy.depositPlayer(killer, stolenAmount);
-            killer.sendMessage(ChatColor.GOLD + victim.getName() + " から "
-                    + String.format("%.0f", stolenAmount) + " を奪いました。");
-            victim.sendMessage(ChatColor.RED + killer.getName() + " に "
-                    + String.format("%.0f", stolenAmount) + " を奪われました。");
+        // --- 金銭処理: キラーが被害者のデポジット（入場料）を奪う ---
+        if (victimDeposit > 0) {
+            economy.depositPlayer(killer, victimDeposit);
+            killer.sendMessage(ChatColor.GOLD + victim.getName() + " のデポジット "
+                    + String.format("%.0f", victimDeposit) + "G を奪いました。");
+            victim.sendMessage(ChatColor.RED + killer.getName() + " に入場料 "
+                    + String.format("%.0f", victimDeposit) + "G を奪われました。");
         }
 
         // --- キラーを指名手配にする (オーバーワールドでのキル) ---

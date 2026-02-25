@@ -36,7 +36,7 @@ class LogoutManagerTest {
     @BeforeEach
     void setUp() {
         logoutManager = new LogoutManager(dataManager, combatManager,
-                economy, worldManager, 15, 0.33);
+                economy, worldManager, 15);
 
         lenient().when(player.getUniqueId()).thenReturn(playerId);
         lenient().when(player.getName()).thenReturn("TestPlayer");
@@ -75,13 +75,13 @@ class LogoutManagerTest {
     // =========================================
 
     @Test
-    void combatLogout_stealsMoneyAndKills() {
+    void combatLogout_givesDepositToAttacker() {
         UUID attackerId = UUID.randomUUID();
         Player attacker = mock(Player.class);
 
         when(combatManager.isInCombat(playerId)).thenReturn(true);
         when(combatManager.getLastAttacker(playerId)).thenReturn(attackerId);
-        when(economy.getBalance(player)).thenReturn(1000.0);
+        when(dataManager.getOverworldDeposit(playerId)).thenReturn(1000.0);
 
         try (MockedStatic<Bukkit> bukkit = mockStatic(Bukkit.class)) {
             bukkit.when(() -> Bukkit.getPlayer(attackerId)).thenReturn(attacker);
@@ -89,9 +89,9 @@ class LogoutManagerTest {
 
             logoutManager.handleLogout(player);
 
-            // 金銭奪取は行われる
-            verify(economy).withdrawPlayer(player, 330.0);
-            verify(economy).depositPlayer(attacker, 330.0);
+            // 所持金没収なし、デポジットを攻撃者に渡す
+            verify(economy, never()).withdrawPlayer(any(Player.class), anyDouble());
+            verify(economy).depositPlayer(attacker, 1000.0);
         }
     }
 
@@ -101,13 +101,12 @@ class LogoutManagerTest {
 
         when(combatManager.isInCombat(playerId)).thenReturn(true);
         when(combatManager.getLastAttacker(playerId)).thenReturn(attackerId);
-        when(economy.getBalance(player)).thenReturn(0.0);
+        when(dataManager.getOverworldDeposit(playerId)).thenReturn(0.0);
 
         try (MockedStatic<Bukkit> bukkit = mockStatic(Bukkit.class)) {
             // setHealth(0) が呼ばれる前後でフラグが立つことを確認
             bukkit.when(() -> Bukkit.getPlayer(attackerId)).thenReturn(null);
             bukkit.when(() -> Bukkit.broadcastMessage(anyString())).thenReturn(0);
-            bukkit.when(() -> Bukkit.getOfflinePlayer(attackerId)).thenReturn(null);
 
             // フラグはsetHealth(0)の前に立ち、後に消えることをverifyするのはモックの制約上難しいが
             // setHealth(0)が呼ばれることを確認
@@ -144,16 +143,16 @@ class LogoutManagerTest {
     }
 
     @Test
-    void handleLogin_graceExpired_losesMoneyOnly() {
+    void handleLogin_graceExpired_clearsInventory() {
         when(dataManager.hasLogoutPenaltyData(playerId)).thenReturn(true);
         when(dataManager.getLogoutPenaltyDeadline(playerId))
                 .thenReturn(System.currentTimeMillis() - 1000);
-        when(economy.getBalance(player)).thenReturn(1000.0);
 
         logoutManager.handleLogin(player);
 
-        // 所持金の33%が没収される
-        verify(economy).withdrawPlayer(player, 330.0);
+        // 所持金没収なし、アイテム全ロスト
+        verify(economy, never()).withdrawPlayer(any(Player.class), anyDouble());
+        verify(inventory).clear();
         verify(dataManager).clearLogoutPenaltyData(playerId);
         verify(dataManager).save();
     }

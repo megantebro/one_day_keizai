@@ -21,7 +21,6 @@ public class LogoutManager {
     private final Economy economy;
     private final WorldManager worldManager;
     private final int logoutGraceMinutes;
-    private final double moneyStealRatio;
 
     // 戦闘ログアウト死亡処理中フラグ: PvPListenerでの二重金銭没収を防ぐ
     private final Set<UUID> combatLogoutDeaths = ConcurrentHashMap.newKeySet();
@@ -29,13 +28,12 @@ public class LogoutManager {
     public LogoutManager(PlayerDataManager dataManager,
                          CombatManager combatManager,
                          Economy economy, WorldManager worldManager,
-                         int logoutGraceMinutes, double moneyStealRatio) {
+                         int logoutGraceMinutes) {
         this.dataManager = dataManager;
         this.combatManager = combatManager;
         this.economy = economy;
         this.worldManager = worldManager;
         this.logoutGraceMinutes = logoutGraceMinutes;
-        this.moneyStealRatio = moneyStealRatio;
     }
 
     /**
@@ -79,16 +77,15 @@ public class LogoutManager {
         if (attackerId != null) {
             Player attacker = Bukkit.getPlayer(attackerId);
 
-            double victimBalance = economy.getBalance(victim);
-            double stolenAmount = victimBalance * moneyStealRatio;
-            if (stolenAmount > 0) {
-                economy.withdrawPlayer(victim, stolenAmount);
+            // デポジット（入場料）を攻撃者に渡す
+            double deposit = dataManager.getOverworldDeposit(victimId);
+            if (deposit > 0) {
                 if (attacker != null) {
-                    economy.depositPlayer(attacker, stolenAmount);
+                    economy.depositPlayer(attacker, deposit);
                     attacker.sendMessage(ChatColor.GOLD + victim.getName() + " が戦闘ログアウトしました。"
-                            + String.format("%.0f", stolenAmount) + " を獲得しました。");
+                            + "デポジット " + String.format("%.0f", deposit) + "G を獲得しました。");
                 } else {
-                    economy.depositPlayer(Bukkit.getOfflinePlayer(attackerId), stolenAmount);
+                    economy.depositPlayer(Bukkit.getOfflinePlayer(attackerId), deposit);
                 }
             }
         }
@@ -126,15 +123,9 @@ public class LogoutManager {
         long deadline = dataManager.getLogoutPenaltyDeadline(uuid);
 
         if (System.currentTimeMillis() > deadline) {
-            // 猶予期間超過: 所持金の一部没収
-            double balance = economy.getBalance(player);
-            double penalty = balance * moneyStealRatio;
-            if (penalty > 0) {
-                economy.withdrawPlayer(player, penalty);
-            }
-            player.sendMessage(ChatColor.RED + "ログアウトペナルティ：所持金の"
-                    + String.format("%.0f%%", moneyStealRatio * 100) + "（"
-                    + String.format("%.0f", penalty) + "）を失いました。");
+            // 猶予期間超過: アイテム全ロスト（所持金ペナルティなし）
+            player.getInventory().clear();
+            player.sendMessage(ChatColor.RED + "ログアウトペナルティ：猶予時間を超過したためアイテムを失いました。");
         } else {
             player.sendMessage(ChatColor.GREEN + "猶予期間内にログインしました。アイテムは保持されます。");
         }

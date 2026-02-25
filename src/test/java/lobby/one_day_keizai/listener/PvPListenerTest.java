@@ -47,7 +47,7 @@ class PvPListenerTest {
     void setUp() {
         pvpListener = new PvPListener(economy, wantedManager, combatManager,
                 protectionManager, nametagManager, worldManager,
-                logoutManager, playerDataManager, 0.33);
+                logoutManager, playerDataManager);
 
         lenient().when(victim.getUniqueId()).thenReturn(victimId);
         lenient().when(killer.getUniqueId()).thenReturn(killerId);
@@ -58,6 +58,7 @@ class PvPListenerTest {
         lenient().when(worldManager.isInOverworld(victim)).thenReturn(false);
         lenient().when(wantedManager.isWanted(any())).thenReturn(false);
         lenient().when(logoutManager.isCombatLogoutDeath(any())).thenReturn(false);
+        lenient().when(playerDataManager.getOverworldDeposit(any())).thenReturn(0.0);
     }
 
     // =========================================
@@ -133,33 +134,33 @@ class PvPListenerTest {
     // =========================================
 
     @Test
-    void onDeath_noKiller_losesMoneyOnly() {
+    void onDeath_noKiller_noAdditionalMoneyPenalty() {
         PlayerDeathEvent event = createDeathEvent(null);
-        when(economy.getBalance(victim)).thenReturn(3000.0);
 
         pvpListener.onPlayerDeath(event);
 
-        verify(economy).withdrawPlayer(victim, 990.0);
+        // 非PvP死亡: 所持金追加没収なし（デポジットはhandleOverworldDeathで没収済み）
+        verify(economy, never()).withdrawPlayer(any(Player.class), anyDouble());
+        verify(economy, never()).depositPlayer(any(Player.class), anyDouble());
         assertTrue(event.getKeepInventory());
         assertTrue(event.getKeepLevel());
     }
 
     @Test
-    void onDeath_normalPvP_stealsOneThirdMoney() {
+    void onDeath_normalPvP_givesDepositToKiller() {
         PlayerDeathEvent event = createDeathEvent(killer);
-        when(economy.getBalance(victim)).thenReturn(3000.0);
+        when(playerDataManager.getOverworldDeposit(victimId)).thenReturn(1000.0);
 
         pvpListener.onPlayerDeath(event);
 
-        verify(economy).withdrawPlayer(victim, 990.0);
-        verify(economy).depositPlayer(killer, 990.0);
+        verify(economy, never()).withdrawPlayer(any(Player.class), anyDouble());
+        verify(economy).depositPlayer(killer, 1000.0);
     }
 
     @Test
     void onDeath_inOverworld_allItemsDropped() {
         PlayerDeathEvent event = createDeathEvent(killer);
         when(worldManager.isInOverworld(victim)).thenReturn(true);
-        when(economy.getBalance(victim)).thenReturn(3000.0);
         when(playerDataManager.getOverworldDeposit(killerId)).thenReturn(1000.0);
 
         pvpListener.onPlayerDeath(event);
@@ -173,7 +174,6 @@ class PvPListenerTest {
     void onDeath_victimWanted_callsHandleWantedDeath() {
         PlayerDeathEvent event = createDeathEvent(killer);
         when(wantedManager.isWanted(victimId)).thenReturn(true);
-        when(economy.getBalance(victim)).thenReturn(0.0);
 
         pvpListener.onPlayerDeath(event);
 
@@ -184,7 +184,6 @@ class PvPListenerTest {
     void onDeath_killerInOverworld_becomesWanted() {
         PlayerDeathEvent event = createDeathEvent(killer);
         when(worldManager.isInOverworld(victim)).thenReturn(true);
-        when(economy.getBalance(victim)).thenReturn(0.0);
         when(playerDataManager.getOverworldDeposit(killerId)).thenReturn(500.0);
 
         pvpListener.onPlayerDeath(event);
@@ -196,7 +195,6 @@ class PvPListenerTest {
     void onDeath_killerAlreadyWanted_keepsBounty() {
         PlayerDeathEvent event = createDeathEvent(killer);
         when(worldManager.isInOverworld(victim)).thenReturn(true);
-        when(economy.getBalance(victim)).thenReturn(0.0);
         when(wantedManager.isWanted(killerId)).thenReturn(true);
         when(wantedManager.getBounty(killerId)).thenReturn(800.0);
         when(playerDataManager.getOverworldDeposit(killerId)).thenReturn(500.0);
@@ -222,7 +220,6 @@ class PvPListenerTest {
     @Test
     void onDeath_clearsCombatData() {
         PlayerDeathEvent event = createDeathEvent(killer);
-        when(economy.getBalance(victim)).thenReturn(0.0);
 
         pvpListener.onPlayerDeath(event);
 

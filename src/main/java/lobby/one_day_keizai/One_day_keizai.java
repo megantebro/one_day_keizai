@@ -39,7 +39,6 @@ public final class One_day_keizai extends JavaPlugin {
         }
 
         // 設定値読み込み
-        double moneyStealRatio = getConfig().getDouble("money-steal-ratio", 0.33);
         int respawnProtectionSeconds = getConfig().getInt("respawn-protection-seconds", 600);
         int combatLogoutSeconds = getConfig().getInt("combat-logout-seconds", 30);
         int logoutGraceMinutes = getConfig().getInt("logout-grace-minutes", 15);
@@ -88,7 +87,7 @@ public final class One_day_keizai extends JavaPlugin {
 
         LogoutManager logoutManager = new LogoutManager(
                 playerDataManager, combatManager,
-                economy, worldManager, logoutGraceMinutes, moneyStealRatio);
+                economy, worldManager, logoutGraceMinutes);
 
         AuctionManager auctionManager = new AuctionManager(
                 this, economy, auctionIntervalMinutes, auctionDurationSeconds);
@@ -106,7 +105,7 @@ public final class One_day_keizai extends JavaPlugin {
         Bukkit.getPluginManager().registerEvents(
                 new PvPListener(economy, wantedManager, combatManager,
                         protectionManager, nametagManager, worldManager,
-                        logoutManager, playerDataManager, moneyStealRatio), this);
+                        logoutManager, playerDataManager), this);
         Bukkit.getPluginManager().registerEvents(
                 new PlayerListener(logoutManager, nametagManager, worldManager, jobManager, this), this);
         Bukkit.getPluginManager().registerEvents(new JobSelectionListener(jobManager), this);

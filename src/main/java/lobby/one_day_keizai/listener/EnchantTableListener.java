@@ -6,12 +6,14 @@ import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.enchantments.EnchantmentOffer;
 import org.bukkit.entity.Player;
+import org.bukkit.event.Event;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.enchantment.PrepareItemEnchantEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.block.Action;
+import org.bukkit.inventory.EquipmentSlot;
 
 import java.util.EnumSet;
 import java.util.Set;
@@ -43,8 +45,12 @@ public class EnchantTableListener implements Listener {
         // エンチャンター（上級職）のみ使用可能
         if (!jobManager.isEnchanter(player.getUniqueId())) {
             event.setCancelled(true);
-            player.sendMessage(ChatColor.RED + "エンチャントテーブルはエンチャンターのみ使用できます。");
-            player.sendMessage(ChatColor.YELLOW + "/job promote でエンチャンターに昇格できます。");
+            event.setUseInteractedBlock(Event.Result.DENY);
+            // オフハンドで2回目のイベントが来る場合はメッセージを重複送信しない
+            if (event.getHand() == EquipmentSlot.HAND) {
+                player.sendMessage(ChatColor.RED + "エンチャントテーブルはエンチャンターのみ使用できます。");
+                player.sendMessage(ChatColor.YELLOW + "/job promote でエンチャンターに昇格できます。");
+            }
         }
     }
 

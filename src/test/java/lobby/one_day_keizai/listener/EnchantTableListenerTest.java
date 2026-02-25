@@ -6,6 +6,7 @@ import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.inventory.EquipmentSlot;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -35,6 +36,7 @@ class EnchantTableListenerTest {
         lenient().when(event.getAction()).thenReturn(Action.RIGHT_CLICK_BLOCK);
         lenient().when(event.getClickedBlock()).thenReturn(block);
         lenient().when(block.getType()).thenReturn(Material.ENCHANTING_TABLE);
+        lenient().when(event.getHand()).thenReturn(EquipmentSlot.HAND);
     }
 
     @Test

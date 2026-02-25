@@ -29,7 +29,6 @@ class PvPListenerTest {
     @Mock private WantedManager wantedManager;
     @Mock private CombatManager combatManager;
     @Mock private ProtectionManager protectionManager;
-    @Mock private DebtManager debtManager;
     @Mock private NametagManager nametagManager;
     @Mock private WorldManager worldManager;
     @Mock private LogoutManager logoutManager;
@@ -47,7 +46,7 @@ class PvPListenerTest {
     @BeforeEach
     void setUp() {
         pvpListener = new PvPListener(economy, wantedManager, combatManager,
-                protectionManager, debtManager, nametagManager, worldManager,
+                protectionManager, nametagManager, worldManager,
                 logoutManager, playerDataManager, 0.33);
 
         lenient().when(victim.getUniqueId()).thenReturn(victimId);
@@ -149,7 +148,6 @@ class PvPListenerTest {
     void onDeath_normalPvP_stealsOneThirdMoney() {
         PlayerDeathEvent event = createDeathEvent(killer);
         when(economy.getBalance(victim)).thenReturn(3000.0);
-        when(debtManager.isDebtor(victimId)).thenReturn(false);
 
         pvpListener.onPlayerDeath(event);
 
@@ -162,7 +160,6 @@ class PvPListenerTest {
         PlayerDeathEvent event = createDeathEvent(killer);
         when(worldManager.isInOverworld(victim)).thenReturn(true);
         when(economy.getBalance(victim)).thenReturn(3000.0);
-        when(debtManager.isDebtor(victimId)).thenReturn(false);
         when(playerDataManager.getOverworldDeposit(killerId)).thenReturn(1000.0);
 
         pvpListener.onPlayerDeath(event);
@@ -177,7 +174,6 @@ class PvPListenerTest {
         PlayerDeathEvent event = createDeathEvent(killer);
         when(wantedManager.isWanted(victimId)).thenReturn(true);
         when(economy.getBalance(victim)).thenReturn(0.0);
-        when(debtManager.isDebtor(victimId)).thenReturn(false);
 
         pvpListener.onPlayerDeath(event);
 
@@ -189,7 +185,6 @@ class PvPListenerTest {
         PlayerDeathEvent event = createDeathEvent(killer);
         when(worldManager.isInOverworld(victim)).thenReturn(true);
         when(economy.getBalance(victim)).thenReturn(0.0);
-        when(debtManager.isDebtor(victimId)).thenReturn(false);
         when(playerDataManager.getOverworldDeposit(killerId)).thenReturn(500.0);
 
         pvpListener.onPlayerDeath(event);
@@ -202,7 +197,6 @@ class PvPListenerTest {
         PlayerDeathEvent event = createDeathEvent(killer);
         when(worldManager.isInOverworld(victim)).thenReturn(true);
         when(economy.getBalance(victim)).thenReturn(0.0);
-        when(debtManager.isDebtor(victimId)).thenReturn(false);
         when(wantedManager.isWanted(killerId)).thenReturn(true);
         when(wantedManager.getBounty(killerId)).thenReturn(800.0);
         when(playerDataManager.getOverworldDeposit(killerId)).thenReturn(500.0);
@@ -229,7 +223,6 @@ class PvPListenerTest {
     void onDeath_clearsCombatData() {
         PlayerDeathEvent event = createDeathEvent(killer);
         when(economy.getBalance(victim)).thenReturn(0.0);
-        when(debtManager.isDebtor(victimId)).thenReturn(false);
 
         pvpListener.onPlayerDeath(event);
 

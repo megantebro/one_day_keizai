@@ -169,23 +169,4 @@ public class PlayerDataManager {
         dataConfig.set("overworldDeposit." + uuid, null);
     }
 
-    // --- Debt Data ---
-
-    public void saveDebts(List<Map<String, Object>> debts) {
-        dataConfig.set("debts", debts);
-    }
-
-    public List<Map<String, Object>> loadDebts() {
-        List<Map<String, Object>> result = new ArrayList<>();
-        List<?> list = dataConfig.getList("debts");
-        if (list == null) return result;
-        for (Object obj : list) {
-            if (obj instanceof Map) {
-                @SuppressWarnings("unchecked")
-                Map<String, Object> map = (Map<String, Object>) obj;
-                result.add(map);
-            }
-        }
-        return result;
-    }
 }

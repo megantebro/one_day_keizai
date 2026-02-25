@@ -22,7 +22,6 @@ class ProtectionManagerTest {
 
     @Mock private JavaPlugin plugin;
     @Mock private NametagManager nametagManager;
-    @Mock private CriminalManager criminalManager;
     @Mock private Player player;
     @Mock private Server server;
     @Mock private BukkitScheduler scheduler;
@@ -37,7 +36,7 @@ class ProtectionManagerTest {
         lenient().when(server.getScheduler()).thenReturn(scheduler);
         TestHelper.setupBukkitServer(server);
 
-        protectionManager = new ProtectionManager(plugin, nametagManager, criminalManager, 600);
+        protectionManager = new ProtectionManager(plugin, nametagManager, 600);
         lenient().when(player.getUniqueId()).thenReturn(playerId);
     }
 

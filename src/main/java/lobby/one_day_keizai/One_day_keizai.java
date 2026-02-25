@@ -2,7 +2,6 @@ package lobby.one_day_keizai;
 
 import lobby.one_day_keizai.command.AuctionCommand;
 import lobby.one_day_keizai.command.BalanceCommand;
-import lobby.one_day_keizai.command.DebtCommand;
 import lobby.one_day_keizai.command.JobCommand;
 import lobby.one_day_keizai.command.OverworldCommand;
 import lobby.one_day_keizai.command.StockCommand;
@@ -41,7 +40,6 @@ public final class One_day_keizai extends JavaPlugin {
 
         // 設定値読み込み
         double moneyStealRatio = getConfig().getDouble("money-steal-ratio", 0.33);
-        int innocentKillLimit = getConfig().getInt("innocent-kill-limit", 3); // DebtManager用に残存
         int respawnProtectionSeconds = getConfig().getInt("respawn-protection-seconds", 600);
         int combatLogoutSeconds = getConfig().getInt("combat-logout-seconds", 30);
         int logoutGraceMinutes = getConfig().getInt("logout-grace-minutes", 15);
@@ -77,12 +75,10 @@ public final class One_day_keizai extends JavaPlugin {
         JobManager jobManager = new JobManager(playerDataManager);
 
         // マネージャー初期化
-        CriminalManager criminalManager = new CriminalManager(playerDataManager, innocentKillLimit);
         NametagManager nametagManager = new NametagManager();
         CombatManager combatManager = new CombatManager(combatLogoutSeconds);
         ProtectionManager protectionManager = new ProtectionManager(
-                this, nametagManager, criminalManager, respawnProtectionSeconds);
-        DebtManager debtManager = new DebtManager(this, playerDataManager, criminalManager, nametagManager);
+                this, nametagManager, respawnProtectionSeconds);
 
         WorldManager worldManager = new WorldManager(
                 this, economy, playerDataManager,
@@ -109,7 +105,7 @@ public final class One_day_keizai extends JavaPlugin {
         // リスナー登録
         Bukkit.getPluginManager().registerEvents(
                 new PvPListener(economy, wantedManager, combatManager,
-                        protectionManager, debtManager, nametagManager, worldManager,
+                        protectionManager, nametagManager, worldManager,
                         logoutManager, playerDataManager, moneyStealRatio), this);
         Bukkit.getPluginManager().registerEvents(
                 new PlayerListener(logoutManager, nametagManager, worldManager, jobManager, this), this);
@@ -123,8 +119,6 @@ public final class One_day_keizai extends JavaPlugin {
         Bukkit.getPluginManager().registerEvents(new DonkeyChestListener(this, jobManager), this);
 
         // コマンド登録
-        getCommand("debt").setExecutor(new DebtCommand(debtManager, economy));
-        getCommand("debt").setTabCompleter((DebtCommand) getCommand("debt").getExecutor());
         getCommand("bal").setExecutor(new BalanceCommand(economy));
         AuctionCommand auctionCommand = new AuctionCommand(auctionManager);
         getCommand("auction").setExecutor(auctionCommand);
@@ -139,9 +133,6 @@ public final class One_day_keizai extends JavaPlugin {
         StockCommand stockCommand = new StockCommand(stockManager);
         getCommand("stock").setExecutor(stockCommand);
         getCommand("stock").setTabCompleter(stockCommand);
-
-        // 債権期限チェッカー開始
-        debtManager.startDeadlineChecker();
 
         // 株配当スケジューラー開始
         stockManager.startDividendScheduler();

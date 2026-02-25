@@ -20,7 +20,6 @@ public class PvPListener implements Listener {
     private final WantedManager wantedManager;
     private final CombatManager combatManager;
     private final ProtectionManager protectionManager;
-    private final DebtManager debtManager;
     private final NametagManager nametagManager;
     private final WorldManager worldManager;
     private final LogoutManager logoutManager;
@@ -28,7 +27,7 @@ public class PvPListener implements Listener {
     private final double moneyStealRatio;
 
     public PvPListener(Economy economy, WantedManager wantedManager, CombatManager combatManager,
-                       ProtectionManager protectionManager, DebtManager debtManager,
+                       ProtectionManager protectionManager,
                        NametagManager nametagManager, WorldManager worldManager,
                        LogoutManager logoutManager, PlayerDataManager playerDataManager,
                        double moneyStealRatio) {
@@ -36,7 +35,6 @@ public class PvPListener implements Listener {
         this.wantedManager = wantedManager;
         this.combatManager = combatManager;
         this.protectionManager = protectionManager;
-        this.debtManager = debtManager;
         this.nametagManager = nametagManager;
         this.worldManager = worldManager;
         this.logoutManager = logoutManager;
@@ -143,19 +141,15 @@ public class PvPListener implements Listener {
         }
 
         // --- 金銭処理 ---
-        if (debtManager.isDebtor(victimId)) {
-            handleDebtorDeath(victim, killer, victimId, killerId);
-        } else {
-            double victimBalance = economy.getBalance(victim);
-            double stolenAmount = victimBalance * moneyStealRatio;
-            if (stolenAmount > 0) {
-                economy.withdrawPlayer(victim, stolenAmount);
-                economy.depositPlayer(killer, stolenAmount);
-                killer.sendMessage(ChatColor.GOLD + victim.getName() + " から "
-                        + String.format("%.0f", stolenAmount) + " を奪いました。");
-                victim.sendMessage(ChatColor.RED + killer.getName() + " に "
-                        + String.format("%.0f", stolenAmount) + " を奪われました。");
-            }
+        double victimBalance = economy.getBalance(victim);
+        double stolenAmount = victimBalance * moneyStealRatio;
+        if (stolenAmount > 0) {
+            economy.withdrawPlayer(victim, stolenAmount);
+            economy.depositPlayer(killer, stolenAmount);
+            killer.sendMessage(ChatColor.GOLD + victim.getName() + " から "
+                    + String.format("%.0f", stolenAmount) + " を奪いました。");
+            victim.sendMessage(ChatColor.RED + killer.getName() + " に "
+                    + String.format("%.0f", stolenAmount) + " を奪われました。");
         }
 
         // --- キラーを指名手配にする (オーバーワールドでのキル) ---
@@ -171,37 +165,4 @@ public class PvPListener implements Listener {
         combatManager.clearCombatData(victimId, killerId);
     }
 
-    private void handleDebtorDeath(Player victim, Player killer, UUID victimId, UUID killerId) {
-        double victimBalance = economy.getBalance(victim);
-        UUID creditorId = debtManager.getCreditor(victimId);
-
-        if (creditorId != null) {
-            double halfBalance = victimBalance / 2.0;
-
-            if (halfBalance > 0) {
-                economy.withdrawPlayer(victim, victimBalance);
-
-                if (killerId.equals(creditorId)) {
-                    economy.depositPlayer(killer, victimBalance);
-                    killer.sendMessage(ChatColor.GOLD + "債務者 " + victim.getName()
-                            + " から " + String.format("%.0f", victimBalance) + " を回収しました。");
-                } else {
-                    economy.depositPlayer(killer, halfBalance);
-                    Player creditor = victim.getServer().getPlayer(creditorId);
-                    if (creditor != null) {
-                        economy.depositPlayer(creditor, halfBalance);
-                        creditor.sendMessage(ChatColor.GOLD + "債務者 " + victim.getName()
-                                + " の死亡により " + String.format("%.0f", halfBalance) + " を回収しました。");
-                    } else {
-                        economy.depositPlayer(victim.getServer().getOfflinePlayer(creditorId), halfBalance);
-                    }
-                    killer.sendMessage(ChatColor.GOLD + victim.getName() + " から "
-                            + String.format("%.0f", halfBalance) + " を奪いました。");
-                }
-            }
-
-            debtManager.clearDebtsForDebtor(victimId);
-            victim.sendMessage(ChatColor.YELLOW + "死亡により債務が帳消しになりました。");
-        }
-    }
 }

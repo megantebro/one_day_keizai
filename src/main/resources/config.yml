@@ -15,7 +15,6 @@ wealthy-merchant-shop-fee: 10000
 # wealthy-merchant-shop-x: 0
 # wealthy-merchant-shop-y: 64
 # wealthy-merchant-shop-z: 0
-innocent-kill-limit: 3
 respawn-protection-seconds: 600
 combat-logout-seconds: 30
 logout-grace-minutes: 15

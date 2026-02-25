@@ -41,14 +41,13 @@ class JobCraftListenerTest {
     // --- 鍛冶屋専用アイテムのクラフト ---
 
     @Test
-    void onCraftItem_ironPickaxe_nonBlacksmith_cancels() {
+    void onCraftItem_ironPickaxe_anyJob_allowed() {
+        // ツール類は鍛冶屋専用から外れた → 誰でもクラフト可
         when(recipe.getResult()).thenReturn(new ItemStack(Material.IRON_PICKAXE));
-        when(jobManager.isBlacksmith(playerId)).thenReturn(false);
 
         listener.onCraftItem(event);
 
-        verify(event).setCancelled(true);
-        verify(player).sendMessage(contains("鍛冶屋のみ"));
+        verify(event, never()).setCancelled(true);
     }
 
     @Test
@@ -62,13 +61,25 @@ class JobCraftListenerTest {
     }
 
     @Test
-    void onCraftItem_diamondAxe_nonBlacksmith_cancels() {
-        when(recipe.getResult()).thenReturn(new ItemStack(Material.DIAMOND_AXE));
+    void onCraftItem_ironSword_nonBlacksmith_cancels() {
+        // 剣は鍛冶屋専用のまま
+        when(recipe.getResult()).thenReturn(new ItemStack(Material.IRON_SWORD));
         when(jobManager.isBlacksmith(playerId)).thenReturn(false);
 
         listener.onCraftItem(event);
 
         verify(event).setCancelled(true);
+        verify(player).sendMessage(contains("鍛冶屋のみ"));
+    }
+
+    @Test
+    void onCraftItem_diamondAxe_anyJob_allowed() {
+        // 斧も鍛冶屋専用から外れた → 誰でもクラフト可
+        when(recipe.getResult()).thenReturn(new ItemStack(Material.DIAMOND_AXE));
+
+        listener.onCraftItem(event);
+
+        verify(event, never()).setCancelled(true);
     }
 
     @Test

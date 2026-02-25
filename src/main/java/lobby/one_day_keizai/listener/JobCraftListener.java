@@ -19,27 +19,23 @@ public class JobCraftListener implements Listener {
     private final JobManager jobManager;
 
     /**
-     * 鍛冶屋専用クラフトアイテム一覧（鉄・金・ダイヤ・ネザライトのツール/装備）
+     * 鍛冶屋専用クラフトアイテム一覧（剣・防具・盾のみ。ツール類は誰でもクラフト可）
      */
     private static final Set<Material> BLACKSMITH_ONLY_ITEMS = EnumSet.of(
-        // 鉄
-        Material.IRON_SWORD, Material.IRON_SHOVEL, Material.IRON_PICKAXE,
-        Material.IRON_AXE, Material.IRON_HOE,
-        Material.IRON_HELMET, Material.IRON_CHESTPLATE, Material.IRON_LEGGINGS, Material.IRON_BOOTS,
-        // 金
-        Material.GOLDEN_SWORD, Material.GOLDEN_SHOVEL, Material.GOLDEN_PICKAXE,
-        Material.GOLDEN_AXE, Material.GOLDEN_HOE,
-        Material.GOLDEN_HELMET, Material.GOLDEN_CHESTPLATE, Material.GOLDEN_LEGGINGS, Material.GOLDEN_BOOTS,
-        // ダイヤ
-        Material.DIAMOND_SWORD, Material.DIAMOND_SHOVEL, Material.DIAMOND_PICKAXE,
-        Material.DIAMOND_AXE, Material.DIAMOND_HOE,
-        Material.DIAMOND_HELMET, Material.DIAMOND_CHESTPLATE, Material.DIAMOND_LEGGINGS, Material.DIAMOND_BOOTS,
-        // ネザライト（スミスingテーブルで使うが念のため）
-        Material.NETHERITE_SWORD, Material.NETHERITE_SHOVEL, Material.NETHERITE_PICKAXE,
-        Material.NETHERITE_AXE, Material.NETHERITE_HOE,
-        Material.NETHERITE_HELMET, Material.NETHERITE_CHESTPLATE, Material.NETHERITE_LEGGINGS, Material.NETHERITE_BOOTS,
-        // その他鍛冶専用
-        Material.IRON_INGOT,  // 精錬は別途。クラフトレシピはシールド等に使用
+        // 剣
+        Material.IRON_SWORD,
+        Material.GOLDEN_SWORD,
+        Material.DIAMOND_SWORD,
+        Material.NETHERITE_SWORD,
+        // 防具: ヘルメット
+        Material.IRON_HELMET, Material.GOLDEN_HELMET, Material.DIAMOND_HELMET, Material.NETHERITE_HELMET,
+        // 防具: チェストプレート
+        Material.IRON_CHESTPLATE, Material.GOLDEN_CHESTPLATE, Material.DIAMOND_CHESTPLATE, Material.NETHERITE_CHESTPLATE,
+        // 防具: レギンス
+        Material.IRON_LEGGINGS, Material.GOLDEN_LEGGINGS, Material.DIAMOND_LEGGINGS, Material.NETHERITE_LEGGINGS,
+        // 防具: ブーツ
+        Material.IRON_BOOTS, Material.GOLDEN_BOOTS, Material.DIAMOND_BOOTS, Material.NETHERITE_BOOTS,
+        // 盾・鍛冶設備
         Material.SHIELD, Material.ANVIL, Material.SMITHING_TABLE, Material.GRINDSTONE
     );
 

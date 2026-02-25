@@ -13,6 +13,10 @@ import lobby.one_day_keizai.listener.*;
 import lobby.one_day_keizai.manager.*;
 import net.milkbowl.vault.economy.Economy;
 import org.bukkit.Bukkit;
+import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.ShapelessRecipe;
 import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -116,6 +120,13 @@ public final class One_day_keizai extends JavaPlugin {
                 new JobFarmListener(jobManager, safeWorldName), this);
         Bukkit.getPluginManager().registerEvents(new EnchantTableListener(jobManager), this);
         Bukkit.getPluginManager().registerEvents(new DonkeyChestListener(this, jobManager), this);
+
+        // 農家専用レシピ: 小麦俵 x1 → エンチャント瓶 x2
+        NamespacedKey farmerHayRecipeKey = new NamespacedKey(this, "farmer_hay_to_xpbottle");
+        ShapelessRecipe farmerHayRecipe = new ShapelessRecipe(
+                farmerHayRecipeKey, new ItemStack(Material.EXPERIENCE_BOTTLE, 2));
+        farmerHayRecipe.addIngredient(Material.HAY_BLOCK);
+        Bukkit.addRecipe(farmerHayRecipe);
 
         // コマンド登録
         getCommand("bal").setExecutor(new BalanceCommand(economy));

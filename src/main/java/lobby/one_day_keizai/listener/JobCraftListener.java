@@ -11,7 +11,6 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.CraftItemEvent;
 import org.bukkit.event.inventory.PrepareItemCraftEvent;
 import org.bukkit.inventory.ItemStack;
-
 import java.util.EnumSet;
 import java.util.Set;
 
@@ -49,21 +48,32 @@ public class JobCraftListener implements Listener {
     }
 
     /**
-     * クラフト完成アイテムが鍛冶屋専用かチェックし、
-     * 非鍛冶屋の場合はクラフト枠を空にして制限メッセージを送る。
+     * クラフト完成アイテムチェック。
+     * 鍛冶屋専用アイテム → 非鍛冶屋は結果をAIRにする。
+     * 農家専用レシピ（小麦俵→エンチャント瓶）→ 非農家は結果をAIRにする。
      */
     @EventHandler(priority = EventPriority.HIGH)
     public void onPrepareItemCraft(PrepareItemCraftEvent event) {
         ItemStack result = event.getInventory().getResult();
         if (result == null || result.getType() == Material.AIR) return;
-        if (!BLACKSMITH_ONLY_ITEMS.contains(result.getType())) return;
 
         for (HumanEntity viewer : event.getViewers()) {
             if (!(viewer instanceof Player player)) continue;
-            if (!jobManager.isBlacksmith(player.getUniqueId())) {
-                event.getInventory().setResult(new ItemStack(Material.AIR));
-                // メッセージは CraftItemEvent で送る（PrepareでのメッセージはUI更新ごとに連発するため）
-                return;
+
+            // 鍛冶屋専用チェック
+            if (BLACKSMITH_ONLY_ITEMS.contains(result.getType())) {
+                if (!jobManager.isBlacksmith(player.getUniqueId())) {
+                    event.getInventory().setResult(new ItemStack(Material.AIR));
+                    return;
+                }
+            }
+
+            // 農家専用チェック: エンチャント瓶（バニラにはクラフトレシピなし）
+            if (result.getType() == Material.EXPERIENCE_BOTTLE) {
+                if (!jobManager.isFarmer(player.getUniqueId())) {
+                    event.getInventory().setResult(new ItemStack(Material.AIR));
+                    return;
+                }
             }
         }
     }
@@ -76,12 +86,24 @@ public class JobCraftListener implements Listener {
         if (!(event.getWhoClicked() instanceof Player player)) return;
 
         ItemStack result = event.getRecipe().getResult();
-        if (!BLACKSMITH_ONLY_ITEMS.contains(result.getType())) return;
 
-        if (!jobManager.isBlacksmith(player.getUniqueId())) {
-            event.setCancelled(true);
-            player.sendMessage(ChatColor.RED + "このアイテムは鍛冶屋のみクラフトできます。");
-            player.sendMessage(ChatColor.YELLOW + "/job select blacksmith で鍛冶屋になれます。");
+        // 鍛冶屋専用チェック
+        if (BLACKSMITH_ONLY_ITEMS.contains(result.getType())) {
+            if (!jobManager.isBlacksmith(player.getUniqueId())) {
+                event.setCancelled(true);
+                player.sendMessage(ChatColor.RED + "このアイテムは鍛冶屋のみクラフトできます。");
+                player.sendMessage(ChatColor.YELLOW + "/job select blacksmith で鍛冶屋になれます。");
+                return;
+            }
+        }
+
+        // 農家専用チェック: エンチャント瓶
+        if (result.getType() == Material.EXPERIENCE_BOTTLE) {
+            if (!jobManager.isFarmer(player.getUniqueId())) {
+                event.setCancelled(true);
+                player.sendMessage(ChatColor.RED + "このレシピは農家のみ使用できます。");
+                player.sendMessage(ChatColor.YELLOW + "/job select farmer で農家になれます。");
+            }
         }
     }
 }

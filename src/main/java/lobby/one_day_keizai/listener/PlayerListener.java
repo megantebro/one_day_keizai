@@ -1,6 +1,8 @@
 package lobby.one_day_keizai.listener;
 
-import lobby.one_day_keizai.manager.*;
+import lobby.one_day_keizai.manager.LogoutManager;
+import lobby.one_day_keizai.manager.NametagManager;
+import lobby.one_day_keizai.manager.WorldManager;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.World;
@@ -12,19 +14,16 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
 
+import java.util.UUID;
+
 public class PlayerListener implements Listener {
 
-    private final CriminalManager criminalManager;
-    private final ProtectionManager protectionManager;
     private final LogoutManager logoutManager;
     private final NametagManager nametagManager;
     private final WorldManager worldManager;
 
-    public PlayerListener(CriminalManager criminalManager, ProtectionManager protectionManager,
-                          LogoutManager logoutManager, NametagManager nametagManager,
+    public PlayerListener(LogoutManager logoutManager, NametagManager nametagManager,
                           WorldManager worldManager) {
-        this.criminalManager = criminalManager;
-        this.protectionManager = protectionManager;
         this.logoutManager = logoutManager;
         this.nametagManager = nametagManager;
         this.worldManager = worldManager;
@@ -34,9 +33,8 @@ public class PlayerListener implements Listener {
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
 
-        // ネームタグ設定
-        nametagManager.updateNametag(player,
-                criminalManager.isCriminal(player.getUniqueId()), false);
+        // ネームタグ設定（指名手配はメモリ管理のため、再接続時は通常扱い）
+        nametagManager.updateNametag(player, false, false);
 
         // ログアウトペナルティチェック
         logoutManager.handleLogin(player);
@@ -56,9 +54,13 @@ public class PlayerListener implements Listener {
     @EventHandler(priority = EventPriority.HIGH)
     public void onPlayerRespawn(PlayerRespawnEvent event) {
         Player player = event.getPlayer();
+        UUID uuid = player.getUniqueId();
+
+        // 指名手配は死亡で解除済みのため、リスポーン時に通常ネームタグへ
+        nametagManager.setNormal(player);
 
         // オーバーワールドで死亡した場合、安全ワールドにリスポーン
-        if (worldManager.consumeDiedInOverworld(player.getUniqueId())) {
+        if (worldManager.consumeDiedInOverworld(uuid)) {
             World safeWorld = Bukkit.getWorld(worldManager.getSafeWorldName());
             if (safeWorld != null) {
                 event.setRespawnLocation(safeWorld.getSpawnLocation());

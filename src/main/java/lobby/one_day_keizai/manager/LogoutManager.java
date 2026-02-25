@@ -2,156 +2,62 @@ package lobby.one_day_keizai.manager;
 
 import lobby.one_day_keizai.data.PlayerDataManager;
 import net.milkbowl.vault.economy.Economy;
-import net.md_5.bungee.api.ChatMessageType;
-import net.md_5.bungee.api.chat.TextComponent;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
-import org.bukkit.Location;
 import org.bukkit.entity.Player;
-import org.bukkit.inventory.ItemStack;
-import org.bukkit.plugin.java.JavaPlugin;
 
-import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.logging.Logger;
 
+/**
+ * ログアウト・ペナルティ管理。
+ * 安全ログアウト条件: 安全ワールドにいること（ベッド条件は廃止）。
+ */
 public class LogoutManager {
 
-    private final JavaPlugin plugin;
     private final PlayerDataManager dataManager;
     private final CombatManager combatManager;
-    private final CriminalManager criminalManager;
-    private final NametagManager nametagManager;
     private final Economy economy;
-    private final int bedLogoutRadius;
+    private final WorldManager worldManager;
     private final int logoutGraceMinutes;
     private final double moneyStealRatio;
-    private final int bedStaySeconds;
-
-    private final Map<UUID, Long> bedProximityTimestamps = new ConcurrentHashMap<>();
-    private final Set<UUID> bedStayNotified = ConcurrentHashMap.newKeySet();
 
     // 戦闘ログアウト死亡処理中フラグ: PvPListenerでの二重金銭没収を防ぐ
     private final Set<UUID> combatLogoutDeaths = ConcurrentHashMap.newKeySet();
 
-    public LogoutManager(JavaPlugin plugin, PlayerDataManager dataManager, CombatManager combatManager,
-                         CriminalManager criminalManager, NametagManager nametagManager,
-                         Economy economy, int bedLogoutRadius, int logoutGraceMinutes,
-                         double moneyStealRatio, int bedStaySeconds) {
-        this.plugin = plugin;
+    public LogoutManager(PlayerDataManager dataManager,
+                         CombatManager combatManager,
+                         Economy economy, WorldManager worldManager,
+                         int logoutGraceMinutes, double moneyStealRatio) {
         this.dataManager = dataManager;
         this.combatManager = combatManager;
-        this.criminalManager = criminalManager;
-        this.nametagManager = nametagManager;
         this.economy = economy;
-        this.bedLogoutRadius = bedLogoutRadius;
+        this.worldManager = worldManager;
         this.logoutGraceMinutes = logoutGraceMinutes;
         this.moneyStealRatio = moneyStealRatio;
-        this.bedStaySeconds = bedStaySeconds;
-    }
-
-    /**
-     * ベッド付近の滞在時間チェックを開始する。毎秒実行。
-     */
-    public void startBedProximityTracker() {
-        Bukkit.getLogger().info("start");
-        plugin.getServer().getScheduler().runTaskTimer(plugin, () -> {
-            for (Player p : Bukkit.getOnlinePlayers()) {
-                UUID uuid = p.getUniqueId();
-                Location bedLoc = p.getBedSpawnLocation();
-
-                if (bedLoc == null) {
-                    bedProximityTimestamps.remove(uuid);
-                    bedStayNotified.remove(uuid);
-                    continue;
-                }
-
-                Location playerLoc = p.getLocation();
-                boolean nearBed = playerLoc.getWorld().equals(bedLoc.getWorld())
-                        && playerLoc.distance(bedLoc) <= bedLogoutRadius;
-
-                if (nearBed) {
-                    bedProximityTimestamps.putIfAbsent(uuid, System.currentTimeMillis());
-                    Long entryTime = bedProximityTimestamps.get(uuid);
-                    if (entryTime != null) {
-                        long elapsedMs = System.currentTimeMillis() - entryTime;
-                        int remaining = bedStaySeconds - (int) (elapsedMs / 1000L);
-
-                        if (remaining > 0) {
-                            // カウントダウンをアクションバーに表示
-                            p.spigot().sendMessage(ChatMessageType.ACTION_BAR,
-                                    new TextComponent(ChatColor.YELLOW + "安全ログアウトまで: "
-                                            + remaining + "秒"));
-                        } else if (bedStayNotified.add(uuid)) {
-                            // カウントダウン完了
-                            p.sendMessage(ChatColor.GREEN + "ベッド付近に" + bedStaySeconds
-                                    + "秒滞在しました。安全にログアウトできます。");
-                            p.spigot().sendMessage(ChatMessageType.ACTION_BAR,
-                                    new TextComponent(ChatColor.GREEN + "安全にログアウトできます"));
-                        }
-                    }
-                } else {
-                    bedProximityTimestamps.remove(uuid);
-                    bedStayNotified.remove(uuid);
-                }
-            }
-        }, 20L, 20L);
-    }
-
-    /**
-     * ベッド付近に十分な時間滞在しているかチェック。
-     */
-    public boolean hasStayedNearBed(UUID uuid) {
-        Long entryTime = bedProximityTimestamps.get(uuid);
-        if (entryTime == null) return false;
-        return System.currentTimeMillis() - entryTime >= bedStaySeconds * 1000L;
     }
 
     /**
      * プレイヤーログアウト時の処理。
+     * 安全ワールドにいる場合は安全ログアウト、それ以外はペナルティ。
      */
     public void handleLogout(Player player) {
         UUID uuid = player.getUniqueId();
 
-        // 戦闘ログアウトチェック
+        // 戦闘ログアウトチェック（最優先）
         if (combatManager.isInCombat(uuid)) {
             handleCombatLogout(player);
-            cleanupProximityData(uuid);
             return;
         }
 
-        // ベッド付近チェック
-        Location bedLoc = player.getBedSpawnLocation();
-        if (bedLoc == null) {
-            applyLogoutPenalty(player);
-            cleanupProximityData(uuid);
+        // 安全ワールドにいる場合は安全ログアウト
+        if (worldManager.isSafeWorld(player.getWorld())) {
             return;
         }
 
-        Location playerLoc = player.getLocation();
-        if (!playerLoc.getWorld().equals(bedLoc.getWorld()) ||
-                playerLoc.distance(bedLoc) > bedLogoutRadius) {
-            applyLogoutPenalty(player);
-            cleanupProximityData(uuid);
-            return;
-        }
-
-        // ベッド付近に15秒間滞在しているかチェック
-        if (!hasStayedNearBed(uuid)) {
-            applyLogoutPenalty(player);
-            cleanupProximityData(uuid);
-            return;
-        }
-
-        // 正常ログアウト
-        cleanupProximityData(uuid);
-    }
-
-    private void cleanupProximityData(UUID uuid) {
-        bedProximityTimestamps.remove(uuid);
-        bedStayNotified.remove(uuid);
+        // 安全ワールド外ログアウトペナルティ
+        applyLogoutPenalty(player);
     }
 
     /**
@@ -173,7 +79,6 @@ public class LogoutManager {
         if (attackerId != null) {
             Player attacker = Bukkit.getPlayer(attackerId);
 
-            // 金銭奪取（setHealth(0) より先に処理して二重没収を防ぐ）
             double victimBalance = economy.getBalance(victim);
             double stolenAmount = victimBalance * moneyStealRatio;
             if (stolenAmount > 0) {
@@ -186,42 +91,28 @@ public class LogoutManager {
                     economy.depositPlayer(Bukkit.getOfflinePlayer(attackerId), stolenAmount);
                 }
             }
-
-            // 罪人ならアイテムドロップ
-            if (criminalManager.isCriminal(victimId)) {
-                Location loc = victim.getLocation();
-                for (ItemStack item : victim.getInventory().getContents()) {
-                    if (item != null) {
-                        loc.getWorld().dropItemNaturally(loc, item);
-                    }
-                }
-                victim.getInventory().clear();
-            }
         }
 
         // setHealth(0) が PlayerDeathEvent を発火させる前にフラグを立てる
-        // → PvPListener.onPlayerDeath が二重に金銭処理しないよう通知
         combatLogoutDeaths.add(victimId);
         victim.setHealth(0);
-        // イベントは同期で発火されるため、ここに来た時点でフラグは不要
         combatLogoutDeaths.remove(victimId);
 
-        // 戦闘ログアウトは無実キルカウントに含めない（悪用防止）
         combatManager.clearAllData(victimId);
         Bukkit.broadcastMessage(ChatColor.RED + victim.getName() + " は戦闘中にログアウトしました！");
     }
 
     /**
-     * ベッド付近外ログアウトペナルティ：データ保存、猶予期間設定。
+     * 安全ワールド外ログアウトペナルティ: 猶予時間を設定する。
      */
     private void applyLogoutPenalty(Player player) {
         UUID uuid = player.getUniqueId();
-        long deadline = System.currentTimeMillis() + (logoutGraceMinutes * 60 * 1000L);
+        long deadline = System.currentTimeMillis() + ((long) logoutGraceMinutes * 60 * 1000L);
         dataManager.setLogoutPenaltyData(uuid, player.getLocation(),
                 player.getInventory().getContents(), deadline);
         dataManager.save();
-        player.sendMessage(ChatColor.RED + "ベッド付近以外でのログアウトです。" +
-                logoutGraceMinutes + "分以内にログインしないとアイテムを失います。");
+        player.sendMessage(ChatColor.RED + "安全ワールド外でのログアウトです。"
+                + logoutGraceMinutes + "分以内にログインしないとアイテムを失います。");
     }
 
     /**
@@ -235,33 +126,20 @@ public class LogoutManager {
         long deadline = dataManager.getLogoutPenaltyDeadline(uuid);
 
         if (System.currentTimeMillis() > deadline) {
-            if (criminalManager.isCriminal(uuid)) {
-                // 罪人は死亡（アイテムロスト）
-                player.setHealth(0);
-                player.sendMessage(ChatColor.DARK_RED + "ログアウトペナルティ：猶予期間が過ぎたため死亡しました。");
-            } else {
-                // 罪人以外は所持金の3割没収
-                double balance = economy.getBalance(player);
-                double penalty = balance * moneyStealRatio;
-                if (penalty > 0) {
-                    economy.withdrawPlayer(player, penalty);
-                }
-                player.sendMessage(ChatColor.RED + "ログアウトペナルティ：所持金の"
-                        + String.format("%.0f%%", moneyStealRatio * 100) + "（"
-                        + String.format("%.0f", penalty) + "）を失いました。");
+            // 猶予期間超過: 所持金の一部没収
+            double balance = economy.getBalance(player);
+            double penalty = balance * moneyStealRatio;
+            if (penalty > 0) {
+                economy.withdrawPlayer(player, penalty);
             }
+            player.sendMessage(ChatColor.RED + "ログアウトペナルティ：所持金の"
+                    + String.format("%.0f%%", moneyStealRatio * 100) + "（"
+                    + String.format("%.0f", penalty) + "）を失いました。");
         } else {
             player.sendMessage(ChatColor.GREEN + "猶予期間内にログインしました。アイテムは保持されます。");
         }
 
         dataManager.clearLogoutPenaltyData(uuid);
         dataManager.save();
-    }
-
-    /**
-     * テスト用：ベッド付近滞在タイムスタンプを設定する。
-     */
-    void setBedProximityTimestamp(UUID uuid, long timestamp) {
-        bedProximityTimestamps.put(uuid, timestamp);
     }
 }

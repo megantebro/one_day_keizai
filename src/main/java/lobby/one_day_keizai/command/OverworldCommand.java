@@ -1,5 +1,6 @@
 package lobby.one_day_keizai.command;
 
+import lobby.one_day_keizai.manager.WantedManager;
 import lobby.one_day_keizai.manager.WorldManager;
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
@@ -14,9 +15,11 @@ import java.util.List;
 public class OverworldCommand implements CommandExecutor, TabCompleter {
 
     private final WorldManager worldManager;
+    private final WantedManager wantedManager;
 
-    public OverworldCommand(WorldManager worldManager) {
+    public OverworldCommand(WorldManager worldManager, WantedManager wantedManager) {
         this.worldManager = worldManager;
+        this.wantedManager = wantedManager;
     }
 
     @Override
@@ -33,7 +36,15 @@ public class OverworldCommand implements CommandExecutor, TabCompleter {
 
         switch (args[0].toLowerCase()) {
             case "enter" -> worldManager.enterOverworld(player);
-            case "return" -> worldManager.returnToSafeWorld(player);
+            case "return" -> {
+                // 指名手配中は帰還禁止
+                if (wantedManager.isWanted(player.getUniqueId())) {
+                    player.sendMessage(ChatColor.RED + "指名手配中は安全ワールドに戻れません！");
+                    player.sendMessage(ChatColor.GOLD + "指名手配が解除されるまで待ってください。");
+                    return true;
+                }
+                worldManager.returnToSafeWorld(player);
+            }
             default -> sendUsage(player);
         }
 

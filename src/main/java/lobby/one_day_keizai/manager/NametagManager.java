@@ -8,7 +8,7 @@ import org.bukkit.scoreboard.Team;
 
 public class NametagManager {
 
-    private static final String TEAM_CRIMINAL = "criminal";
+    private static final String TEAM_WANTED = "wanted";
     private static final String TEAM_PROTECTED = "protected";
     private static final String TEAM_NORMAL = "normal";
 
@@ -20,7 +20,7 @@ public class NametagManager {
     }
 
     private void setupTeams() {
-        createOrGetTeam(TEAM_CRIMINAL, ChatColor.RED);
+        createOrGetTeam(TEAM_WANTED, ChatColor.GOLD);
         createOrGetTeam(TEAM_PROTECTED, ChatColor.GREEN);
         createOrGetTeam(TEAM_NORMAL, ChatColor.WHITE);
     }
@@ -43,12 +43,23 @@ public class NametagManager {
         }
     }
 
-    public void setCriminal(Player player) {
+    /** 指名手配（金色ネームタグ）に設定する。 */
+    public void setWanted(Player player) {
         removeFromAllTeams(player);
-        Team team = scoreboard.getTeam(TEAM_CRIMINAL);
+        Team team = scoreboard.getTeam(TEAM_WANTED);
         if (team != null) {
             team.addEntry(player.getName());
         }
+    }
+
+    /** 指名手配を解除し通常ネームタグに戻す。 */
+    public void clearWanted(Player player) {
+        setNormal(player);
+    }
+
+    /** 後方互換: setCriminal → setWanted に委譲。 */
+    public void setCriminal(Player player) {
+        setWanted(player);
     }
 
     public void setProtected(Player player) {
@@ -70,12 +81,14 @@ public class NametagManager {
 
     /**
      * プレイヤーの状態に応じて適切なチームに設定する。
+     * @param isWanted    指名手配中か
+     * @param isProtected リスポーン保護中か
      */
-    public void updateNametag(Player player, boolean isCriminal, boolean isProtected) {
+    public void updateNametag(Player player, boolean isWanted, boolean isProtected) {
         if (isProtected) {
             setProtected(player);
-        } else if (isCriminal) {
-            setCriminal(player);
+        } else if (isWanted) {
+            setWanted(player);
         } else {
             setNormal(player);
         }

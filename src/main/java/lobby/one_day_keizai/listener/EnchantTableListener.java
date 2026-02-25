@@ -35,11 +35,11 @@ public class EnchantTableListener implements Listener {
 
         Player player = event.getPlayer();
 
-        // isBlacksmith() は鍛冶屋・エンチャンター両方 true を返す
-        if (!jobManager.isBlacksmith(player.getUniqueId())) {
+        // エンチャンター（上級職）のみ使用可能
+        if (!jobManager.isEnchanter(player.getUniqueId())) {
             event.setCancelled(true);
-            player.sendMessage(ChatColor.RED + "エンチャントテーブルは鍛冶屋・エンチャンターのみ使用できます。");
-            player.sendMessage(ChatColor.YELLOW + "/job select blacksmith で鍛冶屋になれます。");
+            player.sendMessage(ChatColor.RED + "エンチャントテーブルはエンチャンターのみ使用できます。");
+            player.sendMessage(ChatColor.YELLOW + "/job promote でエンチャンターに昇格できます。");
         }
     }
 }

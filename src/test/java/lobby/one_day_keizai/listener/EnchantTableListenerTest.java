@@ -38,28 +38,28 @@ class EnchantTableListenerTest {
     }
 
     @Test
-    void onEnchantTable_nonBlacksmith_cancels() {
-        when(jobManager.isBlacksmith(playerId)).thenReturn(false);
+    void onEnchantTable_nonEnchanter_cancels() {
+        when(jobManager.isEnchanter(playerId)).thenReturn(false);
 
         listener.onEnchantTableInteract(event);
 
         verify(event).setCancelled(true);
-        verify(player, atLeastOnce()).sendMessage(contains("鍛冶屋"));
+        verify(player, atLeastOnce()).sendMessage(contains("エンチャンター"));
     }
 
     @Test
-    void onEnchantTable_blacksmith_doesNotCancel() {
-        when(jobManager.isBlacksmith(playerId)).thenReturn(true);
+    void onEnchantTable_blacksmith_cancels() {
+        // 鍛冶師はエンチャント台使用不可
+        when(jobManager.isEnchanter(playerId)).thenReturn(false);
 
         listener.onEnchantTableInteract(event);
 
-        verify(event, never()).setCancelled(true);
+        verify(event).setCancelled(true);
     }
 
     @Test
     void onEnchantTable_enchanter_doesNotCancel() {
-        // isBlacksmith が ENCHANTER でも true を返すことをモック
-        when(jobManager.isBlacksmith(playerId)).thenReturn(true);
+        when(jobManager.isEnchanter(playerId)).thenReturn(true);
 
         listener.onEnchantTableInteract(event);
 
@@ -73,7 +73,7 @@ class EnchantTableListenerTest {
         listener.onEnchantTableInteract(event);
 
         verify(event, never()).setCancelled(true);
-        verify(jobManager, never()).isBlacksmith(any());
+        verify(jobManager, never()).isEnchanter(any());
     }
 
     @Test

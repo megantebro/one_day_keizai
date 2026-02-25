@@ -121,6 +121,7 @@ public final class One_day_keizai extends JavaPlugin {
 
         // 農家専用レシピ: 小麦俵 x1 → エンチャント瓶 x2
         NamespacedKey farmerHayRecipeKey = new NamespacedKey(this, "farmer_hay_to_xpbottle");
+        Bukkit.removeRecipe(farmerHayRecipeKey); // plugman reload 時の重複防止
         ShapelessRecipe farmerHayRecipe = new ShapelessRecipe(
                 farmerHayRecipeKey, new ItemStack(Material.EXPERIENCE_BOTTLE, 2));
         farmerHayRecipe.addIngredient(Material.HAY_BLOCK);

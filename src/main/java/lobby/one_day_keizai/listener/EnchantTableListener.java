@@ -20,11 +20,8 @@ import java.util.EnumSet;
 import java.util.Set;
 
 /**
- * エンチャントテーブルの使用を鍛冶屋・エンチャンターのみに制限する。
- * <p>
- * 鍛冶屋 (BLACKSMITH) は基本職として使用可能。
- * エンチャンター (ENCHANTER) は上級鍛冶屋として使用可能。
- * それ以外の職業のプレイヤーはエンチャントテーブルを開けない。
+ * エンチャントテーブルの使用をエンチャンターのみに制限する。
+ * 防具・武器への本棚ボーナスを無効化（Lv.8 上限）。ツールは制限なし。
  */
 public class EnchantTableListener implements Listener {
 
@@ -43,59 +40,39 @@ public class EnchantTableListener implements Listener {
 
         Player player = event.getPlayer();
 
-        // エンチャンター（上級職）のみ使用可能
         if (!jobManager.isEnchanter(player.getUniqueId())) {
             event.setCancelled(true);
             event.setUseInteractedBlock(Event.Result.DENY);
-            // オフハンドで2回目のイベントが来る場合はメッセージを重複送信しない
             if (event.getHand() == EquipmentSlot.HAND) {
                 player.sendMessage(ChatColor.RED + "エンチャントテーブルはエンチャンターのみ使用できます。");
             }
         }
     }
 
-    /** 本棚ボーナス無効化の対象: 防具・武器のみ */
+    /** 本棚ボーナス無効化対象: 防具・武器・盾 */
     private static final Set<Material> ARMOR_AND_WEAPONS = EnumSet.of(
-        // 剣
         Material.WOODEN_SWORD, Material.STONE_SWORD, Material.IRON_SWORD,
         Material.GOLDEN_SWORD, Material.DIAMOND_SWORD, Material.NETHERITE_SWORD,
-        // 防具: ヘルメット
         Material.LEATHER_HELMET, Material.CHAINMAIL_HELMET, Material.IRON_HELMET,
         Material.GOLDEN_HELMET, Material.DIAMOND_HELMET, Material.NETHERITE_HELMET,
         Material.TURTLE_HELMET,
-        // 防具: チェストプレート
         Material.LEATHER_CHESTPLATE, Material.CHAINMAIL_CHESTPLATE, Material.IRON_CHESTPLATE,
         Material.GOLDEN_CHESTPLATE, Material.DIAMOND_CHESTPLATE, Material.NETHERITE_CHESTPLATE,
-        // 防具: レギンス
         Material.LEATHER_LEGGINGS, Material.CHAINMAIL_LEGGINGS, Material.IRON_LEGGINGS,
         Material.GOLDEN_LEGGINGS, Material.DIAMOND_LEGGINGS, Material.NETHERITE_LEGGINGS,
-        // 防具: ブーツ
         Material.LEATHER_BOOTS, Material.CHAINMAIL_BOOTS, Material.IRON_BOOTS,
         Material.GOLDEN_BOOTS, Material.DIAMOND_BOOTS, Material.NETHERITE_BOOTS,
-        // 盾
         Material.SHIELD
     );
 
     /**
-     * エンチャンター向け本棚ボーナス無効化 (PrepareItemEnchantEvent)。
-     * 防具・武器に限りオファーコストを Lv.8 にキャップ。
-     * ツール類は制限なし。
-     *
-     * ※ setCost() writeback が効かない場合の二重ガードとして
-     *   EnchantItemEvent でも実施する。
+     * PrepareItemEnchantEvent: 防具・武器のオファーコストを Lv.8 にキャップ。
+     * ツールは制限なし。本棚なし (bonus=0) の場合もスキップ。
      */
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onPrepareItemEnchant(PrepareItemEnchantEvent event) {
         if (!(event.getEnchanter() instanceof Player)) return;
         Player player = (Player) event.getEnchanter();
-
-        // デバッグ: イベント発火 + 条件確認
-        java.util.logging.Logger.getLogger("one_day_keizai").info(
-                "[EnchantDebug] PrepareItemEnchant: player=" + player.getName()
-                + " isEnchanter=" + jobManager.isEnchanter(player.getUniqueId())
-                + " bonus=" + event.getEnchantmentBonus()
-                + " item=" + event.getItem().getType());
-
         if (!jobManager.isEnchanter(player.getUniqueId())) return;
         if (event.getEnchantmentBonus() <= 0) return;
 
@@ -105,16 +82,13 @@ public class EnchantTableListener implements Listener {
         EnchantmentOffer[] offers = event.getOffers();
         if (offers == null) return;
         for (EnchantmentOffer offer : offers) {
-            if (offer != null && offer.getCost() > 8) {
-                offer.setCost(8);
-            }
+            if (offer != null && offer.getCost() > 8) offer.setCost(8);
         }
     }
 
     /**
-     * 本棚ボーナス無効化 二重ガード (EnchantItemEvent)。
-     * PrepareItemEnchantEvent の setCost() が反映されなかった場合でも、
-     * 実際のエンチャント実行時に Lv.9 以上をキャンセルする。
+     * EnchantItemEvent: setCost() writeback が効かない場合の二重ガード。
+     * 防具・武器で expLevelCost > 8 ならキャンセル。
      */
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onEnchantItem(EnchantItemEvent event) {
@@ -125,7 +99,6 @@ public class EnchantTableListener implements Listener {
         Material itemType = event.getItem().getType();
         if (!ARMOR_AND_WEAPONS.contains(itemType)) return;
 
-        // 本棚による Lv.8 超えをキャンセル（本棚なしでも max ~8 なので実質問題なし）
         if (event.getExpLevelCost() > 8) {
             event.setCancelled(true);
             player.sendMessage(ChatColor.RED + "防具・武器のエンチャントは本棚の恩恵を受けられません（上限 Lv.8）。");

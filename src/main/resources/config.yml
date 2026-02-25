@@ -1,4 +1,15 @@
 money-steal-ratio: 0.33
+
+# 上級職設定
+# 昇格費用 (デフォルト: 20万G)
+job-promote-fee: 200000
+# 豪商専用ショップへの転送費用
+wealthy-merchant-shop-fee: 10000
+# 豪商専用ショップの座標 (コメントアウト状態 = 未設定 = /job shop 使用不可)
+# wealthy-merchant-shop-world: world
+# wealthy-merchant-shop-x: 0
+# wealthy-merchant-shop-y: 64
+# wealthy-merchant-shop-z: 0
 innocent-kill-limit: 3
 respawn-protection-seconds: 600
 combat-logout-seconds: 30

@@ -54,6 +54,23 @@ public final class One_day_keizai extends JavaPlugin {
         // データ管理
         playerDataManager = new PlayerDataManager(this);
 
+        // 上級職設定
+        double jobPromoteFee = getConfig().getDouble("job-promote-fee", 200000);
+        double wealthyMerchantShopFee = getConfig().getDouble("wealthy-merchant-shop-fee", 10000);
+        org.bukkit.Location wealthyMerchantShopLocation = null;
+        if (getConfig().contains("wealthy-merchant-shop-world")) {
+            String shopWorld = getConfig().getString("wealthy-merchant-shop-world");
+            double shopX = getConfig().getDouble("wealthy-merchant-shop-x", 0);
+            double shopY = getConfig().getDouble("wealthy-merchant-shop-y", 64);
+            double shopZ = getConfig().getDouble("wealthy-merchant-shop-z", 0);
+            org.bukkit.World w = Bukkit.getWorld(shopWorld);
+            if (w != null) {
+                wealthyMerchantShopLocation = new org.bukkit.Location(w, shopX, shopY, shopZ);
+            } else {
+                getLogger().warning("豪商ショップワールド '" + shopWorld + "' が見つかりません。/job shop は使用できません。");
+            }
+        }
+
         // 職業マネージャー
         JobManager jobManager = new JobManager(playerDataManager);
 
@@ -92,6 +109,8 @@ public final class One_day_keizai extends JavaPlugin {
         Bukkit.getPluginManager().registerEvents(new JobCraftListener(jobManager), this);
         Bukkit.getPluginManager().registerEvents(
                 new JobFarmListener(jobManager, safeWorldName), this);
+        Bukkit.getPluginManager().registerEvents(new EnchantTableListener(jobManager), this);
+        Bukkit.getPluginManager().registerEvents(new DonkeyChestListener(this, jobManager), this);
 
         // コマンド登録
         getCommand("debt").setExecutor(new DebtCommand(debtManager, economy));
@@ -103,7 +122,8 @@ public final class One_day_keizai extends JavaPlugin {
         OverworldCommand overworldCommand = new OverworldCommand(worldManager, wantedManager);
         getCommand("ow").setExecutor(overworldCommand);
         getCommand("ow").setTabCompleter(overworldCommand);
-        JobCommand jobCommand = new JobCommand(jobManager);
+        JobCommand jobCommand = new JobCommand(jobManager, economy,
+                jobPromoteFee, wealthyMerchantShopFee, wealthyMerchantShopLocation);
         getCommand("job").setExecutor(jobCommand);
         getCommand("job").setTabCompleter(jobCommand);
 

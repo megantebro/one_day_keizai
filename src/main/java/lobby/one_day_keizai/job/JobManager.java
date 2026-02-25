@@ -27,15 +27,36 @@ public class JobManager {
         dataManager.save();
     }
 
+    /** 農家 または 資本家（上級農家） */
     public boolean isFarmer(UUID uuid) {
-        return getJob(uuid) == Job.FARMER;
+        Job job = getJob(uuid);
+        return job == Job.FARMER || job == Job.CAPITALIST;
     }
 
+    /** 鍛冶屋 または エンチャンター（上級鍛冶屋） */
     public boolean isBlacksmith(UUID uuid) {
-        return getJob(uuid) == Job.BLACKSMITH;
+        Job job = getJob(uuid);
+        return job == Job.BLACKSMITH || job == Job.ENCHANTER;
     }
 
+    /** 商人 または 豪商（上級商人） */
     public boolean isMerchant(UUID uuid) {
-        return getJob(uuid) == Job.MERCHANT;
+        Job job = getJob(uuid);
+        return job == Job.MERCHANT || job == Job.WEALTHY_MERCHANT;
+    }
+
+    /** 上級職: 資本家のみ */
+    public boolean isCapitalist(UUID uuid) {
+        return getJob(uuid) == Job.CAPITALIST;
+    }
+
+    /** 上級職: エンチャンターのみ */
+    public boolean isEnchanter(UUID uuid) {
+        return getJob(uuid) == Job.ENCHANTER;
+    }
+
+    /** 上級職: 豪商のみ */
+    public boolean isWealthyMerchant(UUID uuid) {
+        return getJob(uuid) == Job.WEALTHY_MERCHANT;
     }
 }

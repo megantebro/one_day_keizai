@@ -10,6 +10,7 @@ import org.bukkit.event.Event;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.enchantment.EnchantItemEvent;
 import org.bukkit.event.enchantment.PrepareItemEnchantEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.block.Action;
@@ -76,42 +77,58 @@ public class EnchantTableListener implements Listener {
     );
 
     /**
-     * エンチャンター向け本棚ボーナス無効化。
-     * 防具・武器のエンチャントに限り、本棚ありでもレベル上限を 8 にキャップ。
-     * ツール類（ピッケル・斧・シャベル等）は本棚の恩恵を受けられる。
+     * エンチャンター向け本棚ボーナス無効化 (PrepareItemEnchantEvent)。
+     * 防具・武器に限りオファーコストを Lv.8 にキャップ。
+     * ツール類は制限なし。
+     *
+     * ※ setCost() writeback が効かない場合の二重ガードとして
+     *   EnchantItemEvent でも実施する。
      */
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onPrepareItemEnchant(PrepareItemEnchantEvent event) {
         if (!(event.getEnchanter() instanceof Player)) return;
         Player player = (Player) event.getEnchanter();
+
+        // デバッグ: イベント発火 + 条件確認
+        java.util.logging.Logger.getLogger("one_day_keizai").info(
+                "[EnchantDebug] PrepareItemEnchant: player=" + player.getName()
+                + " isEnchanter=" + jobManager.isEnchanter(player.getUniqueId())
+                + " bonus=" + event.getEnchantmentBonus()
+                + " item=" + event.getItem().getType());
+
         if (!jobManager.isEnchanter(player.getUniqueId())) return;
         if (event.getEnchantmentBonus() <= 0) return;
 
-        // ツール類は制限なし
         Material itemType = event.getItem().getType();
         if (!ARMOR_AND_WEAPONS.contains(itemType)) return;
 
         EnchantmentOffer[] offers = event.getOffers();
         if (offers == null) return;
-        // DEBUG: 本棚ボーナスとオファーを出力
-        java.util.logging.Logger.getLogger("one_day_keizai").info(
-            "[EnchantDebug] player=" + player.getName()
-            + " bonus=" + event.getEnchantmentBonus()
-            + " item=" + itemType
-            + " offers=" + java.util.Arrays.toString(
-                java.util.Arrays.stream(offers)
-                    .map(o -> o == null ? "null" : o.getCost() + "")
-                    .toArray(String[]::new)));
-
-        boolean capped = false;
         for (EnchantmentOffer offer : offers) {
             if (offer != null && offer.getCost() > 8) {
                 offer.setCost(8);
-                capped = true;
             }
         }
-        if (capped) {
-            player.sendMessage(ChatColor.YELLOW + "防具・武器のエンチャントは本棚の恩恵を受けられません（上限 Lv.8）。");
+    }
+
+    /**
+     * 本棚ボーナス無効化 二重ガード (EnchantItemEvent)。
+     * PrepareItemEnchantEvent の setCost() が反映されなかった場合でも、
+     * 実際のエンチャント実行時に Lv.9 以上をキャンセルする。
+     */
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onEnchantItem(EnchantItemEvent event) {
+        if (!(event.getEnchanter() instanceof Player)) return;
+        Player player = (Player) event.getEnchanter();
+        if (!jobManager.isEnchanter(player.getUniqueId())) return;
+
+        Material itemType = event.getItem().getType();
+        if (!ARMOR_AND_WEAPONS.contains(itemType)) return;
+
+        // 本棚による Lv.8 超えをキャンセル（本棚なしでも max ~8 なので実質問題なし）
+        if (event.getExpLevelCost() > 8) {
+            event.setCancelled(true);
+            player.sendMessage(ChatColor.RED + "防具・武器のエンチャントは本棚の恩恵を受けられません（上限 Lv.8）。");
         }
     }
 }

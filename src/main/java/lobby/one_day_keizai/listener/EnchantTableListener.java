@@ -49,7 +49,6 @@ public class EnchantTableListener implements Listener {
             // オフハンドで2回目のイベントが来る場合はメッセージを重複送信しない
             if (event.getHand() == EquipmentSlot.HAND) {
                 player.sendMessage(ChatColor.RED + "エンチャントテーブルはエンチャンターのみ使用できます。");
-                player.sendMessage(ChatColor.YELLOW + "/job promote でエンチャンターに昇格できます。");
             }
         }
     }

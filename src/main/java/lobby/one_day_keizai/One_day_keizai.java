@@ -5,7 +5,9 @@ import lobby.one_day_keizai.command.BalanceCommand;
 import lobby.one_day_keizai.command.DebtCommand;
 import lobby.one_day_keizai.command.JobCommand;
 import lobby.one_day_keizai.command.OverworldCommand;
+import lobby.one_day_keizai.command.StockCommand;
 import lobby.one_day_keizai.data.PlayerDataManager;
+import lobby.one_day_keizai.data.StockDataManager;
 import lobby.one_day_keizai.item.BountyItem;
 import lobby.one_day_keizai.job.JobManager;
 import lobby.one_day_keizai.listener.*;
@@ -96,6 +98,14 @@ public final class One_day_keizai extends JavaPlugin {
                 this, economy, auctionIntervalMinutes, auctionDurationSeconds);
         BalanceScoreboardManager balanceScoreboardManager = new BalanceScoreboardManager(this, economy);
 
+        // 株・投資システム
+        double stockSellFee = getConfig().getDouble("stock-sell-fee", 0.20);
+        double stockDividendRate = getConfig().getDouble("stock-dividend-rate", 0.01);
+        int stockDividendIntervalMinutes = getConfig().getInt("stock-dividend-interval-minutes", 60);
+        StockDataManager stockDataManager = new StockDataManager(this);
+        StockManager stockManager = new StockManager(this, economy, jobManager,
+                stockDataManager, stockSellFee, stockDividendRate, stockDividendIntervalMinutes);
+
         // リスナー登録
         Bukkit.getPluginManager().registerEvents(
                 new PvPListener(economy, wantedManager, combatManager,
@@ -126,9 +136,15 @@ public final class One_day_keizai extends JavaPlugin {
                 jobPromoteFee, wealthyMerchantShopFee, wealthyMerchantShopLocation);
         getCommand("job").setExecutor(jobCommand);
         getCommand("job").setTabCompleter(jobCommand);
+        StockCommand stockCommand = new StockCommand(stockManager);
+        getCommand("stock").setExecutor(stockCommand);
+        getCommand("stock").setTabCompleter(stockCommand);
 
         // 債権期限チェッカー開始
         debtManager.startDeadlineChecker();
+
+        // 株配当スケジューラー開始
+        stockManager.startDividendScheduler();
 
         // オークションスケジューラー開始
         auctionManager.startAuctionScheduler();
@@ -149,6 +165,10 @@ public final class One_day_keizai extends JavaPlugin {
         }
         getLogger().info("One Day Keizai プラグインが無効化されました。");
     }
+
+    // stockDataManager の参照を onDisable で使うため field に昇格
+    // ※ stockDataManager は StockManager 内で保持されているため、
+    //   追加の save() 呼び出しは不要 (StockManager が各操作後に save() を呼ぶ)
 
     private boolean setupEconomy() {
         if (Bukkit.getPluginManager().getPlugin("Vault") == null) {

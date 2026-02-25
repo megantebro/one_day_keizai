@@ -22,6 +22,9 @@ commands:
   job:
     description: 職業管理
     usage: /job <select|info|list> [職業名]
+  stock:
+    description: 株・投資システム (資本家限定)
+    usage: /stock <info|buy|sell|offer|accept|reject>
 
 permissions:
   one_day_keizai.ow:

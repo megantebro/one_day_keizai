@@ -43,7 +43,17 @@ public class OverworldCommand implements CommandExecutor, TabCompleter {
                     player.sendMessage(ChatColor.GOLD + "指名手配が解除されるまで待ってください。");
                     return true;
                 }
-                worldManager.returnToSafeWorld(player);
+                // 安全ワールド内（ショップ等）→ スポーン地点へ直接TP
+                if (worldManager.isSafeWorld(player.getWorld())) {
+                    org.bukkit.World safeWorld = org.bukkit.Bukkit.getWorld(
+                            worldManager.getSafeWorldName());
+                    if (safeWorld != null) {
+                        player.teleport(safeWorld.getSpawnLocation());
+                        player.sendMessage(org.bukkit.ChatColor.GREEN + "スポーン地点に戻りました。");
+                    }
+                } else {
+                    worldManager.returnToSafeWorld(player);
+                }
             }
             default -> sendUsage(player);
         }

@@ -1,6 +1,7 @@
 package lobby.one_day_keizai;
 
 import lobby.one_day_keizai.command.AuctionCommand;
+import lobby.one_day_keizai.command.ShopCommand;
 import lobby.one_day_keizai.command.BalanceCommand;
 import lobby.one_day_keizai.command.JobCommand;
 import lobby.one_day_keizai.command.OverworldCommand;
@@ -142,6 +143,10 @@ public final class One_day_keizai extends JavaPlugin {
         StockCommand stockCommand = new StockCommand(stockManager);
         getCommand("stock").setExecutor(stockCommand);
         getCommand("stock").setTabCompleter(stockCommand);
+
+        ShopCommand shopCommand = new ShopCommand(this);
+        getCommand("shop").setExecutor(shopCommand);
+        getCommand("shop").setTabCompleter(shopCommand);
 
         // 株配当スケジューラー開始
         stockManager.startDividendScheduler();

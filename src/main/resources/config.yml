@@ -54,3 +54,23 @@ auction-items:
   - material: BOOKSHELF
     amount: 5
     name: "本棚 x5"
+
+
+# ショップワープ設定
+shop-world: "economy"
+shops:
+  merchant:
+    display: "商人ショップ"
+    x: -429
+    y: 101
+    z: -442
+  farmer:
+    display: "農家ショップ"
+    x: -435
+    y: 101
+    z: -442
+  blacksmith:
+    display: "鍛冶屋ショップ"
+    x: -442
+    y: 101
+    z: -442

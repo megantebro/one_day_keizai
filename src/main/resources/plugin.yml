@@ -22,6 +22,9 @@ commands:
   stock:
     description: 株・投資システム (資本家限定)
     usage: /stock <info|buy|sell|offer|accept|reject>
+  shop:
+    description: ショップエリアへワープ
+    usage: /shop [merchant|farmer|blacksmith]
 
 permissions:
   one_day_keizai.ow:

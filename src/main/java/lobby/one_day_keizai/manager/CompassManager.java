@@ -15,8 +15,14 @@ import java.util.*;
 
 /**
  * カスタムコンパス管理
- *  - SHOP    コンパス: 設定した固定ショップ座標を指す
+ *  - SHOP    コンパス: front地点付近で右クリック → back地点(ショップ内)へTP
  *  - WANTED  コンパス: 最寄り指名手配プレイヤーを指す（overworld）
+ *
+ * config keys:
+ *   compass-shop-front-world/x/y/z  … コンパスが反応する地点（入口）
+ *   compass-shop-front-radius       … front の有効半径（デフォルト15）
+ *   compass-shop-back-world/x/y/z   … TP先（ショップ内）
+ *   compass-shop-allowed-jobs       … 許可職業リスト
  */
 public class CompassManager {
 
@@ -28,8 +34,10 @@ public class CompassManager {
     private final WantedManager wantedManager;
     private final WorldManager worldManager;
 
-    /** ショップコンパスが指す固定座標 */
-    private Location shopTarget = null;
+    /** コンパスが反応する入口地点（null=どこでも反応） */
+    private Location shopFront = null;
+    /** TP先（ショップ内） */
+    private Location shopBack  = null;
 
     public CompassManager(JavaPlugin plugin, WantedManager wantedManager,
                           WorldManager worldManager) {
@@ -37,74 +45,97 @@ public class CompassManager {
         this.wantedManager  = wantedManager;
         this.worldManager   = worldManager;
         this.compassTypeKey = new NamespacedKey(plugin, "compass_type");
-        loadShopTarget();
+        loadShopLocations();
     }
 
-    // ─── ショップターゲット読み込み / 保存 ───────────────────────
+    // ─── 読み込み / 保存 ─────────────────────────────────────────
 
-    private void loadShopTarget() {
-        String worldName = plugin.getConfig().getString("compass-shop-world", "");
-        if (worldName.isEmpty()) { shopTarget = null; return; }
+    private void loadShopLocations() {
+        shopFront = loadLocation("compass-shop-front");
+        shopBack  = loadLocation("compass-shop-back");
+    }
+
+    private Location loadLocation(String prefix) {
+        String worldName = plugin.getConfig().getString(prefix + "-world", "");
+        if (worldName.isEmpty()) return null;
         World world = Bukkit.getWorld(worldName);
-        if (world == null) { shopTarget = null; return; }
-        double x = plugin.getConfig().getDouble("compass-shop-x", 0);
-        double y = plugin.getConfig().getDouble("compass-shop-y", 64);
-        double z = plugin.getConfig().getDouble("compass-shop-z", 0);
-        shopTarget = new Location(world, x, y, z);
+        if (world == null) return null;
+        double x = plugin.getConfig().getDouble(prefix + "-x", 0);
+        double y = plugin.getConfig().getDouble(prefix + "-y", 64);
+        double z = plugin.getConfig().getDouble(prefix + "-z", 0);
+        return new Location(world, x, y, z);
     }
 
-    /**
-     * ショップコンパスのターゲット座標を更新し config.yml に永続保存する
-     */
-    public void setShopTarget(Location loc) {
-        this.shopTarget = loc.clone();
-        plugin.getConfig().set("compass-shop-world", loc.getWorld().getName());
-        plugin.getConfig().set("compass-shop-x", loc.getX());
-        plugin.getConfig().set("compass-shop-y", loc.getY());
-        plugin.getConfig().set("compass-shop-z", loc.getZ());
+    private void saveLocation(String prefix, Location loc) {
+        plugin.getConfig().set(prefix + "-world", loc.getWorld().getName());
+        plugin.getConfig().set(prefix + "-x", loc.getX());
+        plugin.getConfig().set(prefix + "-y", loc.getY());
+        plugin.getConfig().set(prefix + "-z", loc.getZ());
         plugin.saveConfig();
     }
 
-    public Location getShopTarget() { return shopTarget; }
+    /** /compass setshop front — コンパスが反応する入口地点を設定 */
+    public void setShopFront(Location loc) {
+        this.shopFront = loc.clone();
+        saveLocation("compass-shop-front", loc);
+    }
+
+    /** /compass setshop back — TP先（ショップ内）を設定 */
+    public void setShopBack(Location loc) {
+        this.shopBack = loc.clone();
+        saveLocation("compass-shop-back", loc);
+    }
+
+    public Location getShopFront() { return shopFront; }
+    public Location getShopBack()  { return shopBack;  }
+
+    // ─── ショップコンパス右クリック処理 ─────────────────────────
 
     /**
      * ショップコンパス右クリック処理。
-     * config の compass-shop-allowed-jobs に含まれる職業のみTPを許可。
+     *  1. front が設定済みなら、そこから compass-shop-front-radius 内にいるか確認
+     *  2. 許可職業チェック
+     *  3. back へTP
      * @return true=TP成功, false=弾いた
      */
     public boolean handleShopCompassClick(Player player, JobManager jobManager) {
-        if (shopTarget == null) {
-            player.sendMessage(ChatColor.RED + "ショップ座標が未設定です。OPに問い合わせてください。");
+        // ─ front 範囲チェック ─
+        if (shopFront != null) {
+            if (!Objects.equals(shopFront.getWorld(), player.getWorld())) {
+                player.sendMessage(ChatColor.RED + "このコンパスは " +
+                        shopFront.getWorld().getName() + " ワールドで使用してください。");
+                return false;
+            }
+            double radius = plugin.getConfig().getDouble("compass-shop-front-radius", 15.0);
+            if (player.getLocation().distanceSquared(shopFront) > radius * radius) {
+                player.sendMessage(ChatColor.RED + "ショップ入口付近でコンパスを使用してください！");
+                return false;
+            }
+        }
+
+        // ─ back 未設定チェック ─
+        if (shopBack == null) {
+            player.sendMessage(ChatColor.RED + "ショップのTP先が未設定です。OPに問い合わせてください。");
             return false;
         }
 
+        // ─ 職業チェック ─
         Job job = jobManager.getJob(player.getUniqueId());
-
-        // 許可職業リスト（config: compass-shop-allowed-jobs）
         List<String> allowedNames = plugin.getConfig().getStringList("compass-shop-allowed-jobs");
         if (allowedNames.isEmpty()) {
-            // デフォルト: MERCHANT / WEALTHY_MERCHANT
             allowedNames = List.of("MERCHANT", "WEALTHY_MERCHANT");
         }
-
         boolean allowed = player.isOp() ||
                 allowedNames.stream().anyMatch(name -> name.equalsIgnoreCase(job.name()));
-
         if (!allowed) {
             player.sendMessage(ChatColor.RED + "このショップは商人職業専用です！");
-            player.sendMessage(ChatColor.GOLD + "職業を変更するには " + ChatColor.WHITE + "/job select" + ChatColor.GOLD + " を使ってください。");
+            player.sendMessage(ChatColor.GOLD + "職業を変更するには " +
+                    ChatColor.WHITE + "/job select" + ChatColor.GOLD + " を使ってください。");
             return false;
         }
 
-        // 同ワールドでなければ TP 先ワールドが違う旨を案内
-        if (shopTarget.getWorld() != null &&
-                !shopTarget.getWorld().equals(player.getWorld())) {
-            player.sendMessage(ChatColor.RED + "このコンパスは " +
-                    shopTarget.getWorld().getName() + " ワールドで使用してください。");
-            return false;
-        }
-
-        player.teleport(shopTarget);
+        // ─ TP ─
+        player.teleport(shopBack);
         player.sendMessage(ChatColor.AQUA + "ショップへようこそ！");
         return true;
     }
@@ -116,7 +147,7 @@ public class CompassManager {
         ItemMeta meta = item.getItemMeta();
         meta.setDisplayName(ChatColor.AQUA + "" + ChatColor.BOLD + "ショップコンパス");
         meta.setLore(List.of(
-            ChatColor.GRAY + "ショップ方向を指し示す",
+            ChatColor.GRAY + "入口付近で右クリック → ショップへTP",
             ChatColor.GRAY + "economy ワールドで使用"
         ));
         meta.getPersistentDataContainer().set(compassTypeKey, PersistentDataType.STRING, TYPE_SHOP);
@@ -170,13 +201,14 @@ public class CompassManager {
         }
     }
 
-    // ─── ショップコンパス更新 ─────────────────────────────────────
+    // ─── ショップコンパス更新（コンパス針をbackへ向ける）──────────
 
     private void updateShopCompass(Player player) {
-        if (shopTarget == null) return;
-        // 同ワールドのみ対象
-        if (!Objects.equals(shopTarget.getWorld(), player.getWorld())) return;
-        player.setCompassTarget(shopTarget);
+        // コンパスはback（ショップ内）を指す。frontに向けてもよいが遠い方が自然
+        Location target = shopBack != null ? shopBack : shopFront;
+        if (target == null) return;
+        if (!Objects.equals(target.getWorld(), player.getWorld())) return;
+        player.setCompassTarget(target);
     }
 
     // ─── 賞金首コンパス更新 ──────────────────────────────────────
@@ -197,7 +229,6 @@ public class CompassManager {
 
         if (nearest != null) {
             player.setCompassTarget(nearest);
-            // コンパスのトラッキング先をアイテムメタに反映（ローディングポインタ表示）
             ItemStack held = player.getInventory().getItemInMainHand();
             if (held.getItemMeta() instanceof CompassMeta cm) {
                 cm.setLodestone(nearest);
@@ -205,7 +236,7 @@ public class CompassManager {
                 held.setItemMeta(cm);
             }
         } else {
-            player.setCompassTarget(player.getLocation()); // 指名手配なし → 自分を指す
+            player.setCompassTarget(player.getLocation());
         }
     }
 }

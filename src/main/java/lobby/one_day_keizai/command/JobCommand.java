@@ -198,10 +198,15 @@ public class JobCommand implements CommandExecutor, TabCompleter {
             player.sendMessage(job.getColorCode() + "  " + job.getDisplayName()
                     + ChatColor.WHITE + " - " + getJobSummary(job));
         }
-        player.sendMessage(ChatColor.GRAY + "【上級職】 (鍛冶屋が /job promote で昇格, 費用: " + formatMoney(promoteFee) + " G)");
-        player.sendMessage(Job.ENCHANTER.getColorCode() + "  " + Job.ENCHANTER.getDisplayName()
-                + ChatColor.GRAY + " ← " + Job.BLACKSMITH.getDisplayName()
-                + ChatColor.WHITE + " - " + getJobSummary(Job.ENCHANTER));
+        player.sendMessage(ChatColor.GRAY + "【上級職】 (/job promote で昇格, 費用: " + formatMoney(promoteFee) + " G)");
+        for (Job base : new Job[]{Job.FARMER, Job.BLACKSMITH, Job.MERCHANT}) {
+            Job upper = base.getUpperJob();
+            if (upper != null) {
+                player.sendMessage(upper.getColorCode() + "  " + upper.getDisplayName()
+                        + ChatColor.GRAY + " ← " + base.getDisplayName()
+                        + ChatColor.WHITE + " - " + getJobSummary(upper));
+            }
+        }
         player.sendMessage(ChatColor.YELLOW + "/job select <farmer|blacksmith|merchant> で職業を選択");
     }
 

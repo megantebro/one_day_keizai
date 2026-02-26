@@ -161,8 +161,10 @@ public class CompassManager {
         ItemMeta meta = item.getItemMeta();
         meta.setDisplayName(ChatColor.AQUA + "" + ChatColor.BOLD + "ショップコンパス");
         meta.setLore(List.of(
-            ChatColor.GRAY + "入口付近で右クリック → ショップへTP",
-            ChatColor.GRAY + "economy ワールドで使用"
+            ChatColor.YELLOW + "右クリックでコンパスを更新・ショップへTP",
+            ChatColor.GRAY + "メインハンドでのみ使用可能",
+            ChatColor.GRAY + "overworld: 入口方向を指す",
+            ChatColor.GRAY + "economy: 出口方向を指す"
         ));
         meta.getPersistentDataContainer().set(compassTypeKey, PersistentDataType.STRING, TYPE_SHOP);
         item.setItemMeta(meta);
@@ -217,9 +219,16 @@ public class CompassManager {
 
     // ─── ショップコンパス更新（コンパス針をbackへ向ける）──────────
 
-    private void updateShopCompass(Player player) {
-        // コンパスはfront（入口）を指す
-        Location target = shopFront != null ? shopFront : shopBack;
+    public void updateShopCompass(Player player) {
+        // オーバーワールド → front を指す / economy → back を指す
+        Location target;
+        if (worldManager.isSafeWorld(player.getWorld())) {
+            // economy ワールドにいる → back（ショップ内出口）を指す
+            target = shopBack != null ? shopBack : shopFront;
+        } else {
+            // overworld にいる → front（ショップ入口）を指す
+            target = shopFront != null ? shopFront : shopBack;
+        }
         if (target == null) return;
         if (!Objects.equals(target.getWorld(), player.getWorld())) return;
         player.setCompassTarget(target);

@@ -8,12 +8,16 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 
 /**
  * コンパスの右クリック処理。
- *  - プラグイン製ショップコンパス: 職業チェック → TP or 拒否
- *  - それ以外のコンパス（バニラ/WE）: キャンセル（WE移動無効化）
+ *  - メインハンドでのみ動作
+ *  - プラグイン製ショップコンパス:
+ *      1. コンパス針を即時更新（ワールドに応じた方向へ）
+ *      2. 範囲内ならTP (front付近→back入場 / back付近→front退場)
+ *  - その他コンパス（バニラ/WE）: キャンセル（WE移動無効化）
  */
 public class CompassListener implements Listener {
 
@@ -27,24 +31,27 @@ public class CompassListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
     public void onCompassClick(PlayerInteractEvent event) {
+        // メインハンドのみ
+        if (event.getHand() != EquipmentSlot.HAND) return;
+
         ItemStack held = event.getItem();
         if (held == null || held.getType() != Material.COMPASS) return;
 
-        // 右クリックのみ処理（左クリックはキャンセルだけ）
+        event.setCancelled(true);
+
         boolean isRightClick = event.getAction() == Action.RIGHT_CLICK_AIR
                             || event.getAction() == Action.RIGHT_CLICK_BLOCK;
 
+        if (!isRightClick) return;
+
         String type = compassManager.getCompassType(held);
 
-        if (CompassManager.TYPE_SHOP.equals(type) && isRightClick) {
-            // ショップコンパス右クリック: 職業チェック + TP
-            event.setCancelled(true);
-            if (event.getPlayer() != null) {
-                compassManager.handleShopCompassClick(event.getPlayer(), jobManager);
-            }
-        } else {
-            // バニラコンパス or 賞金首コンパス or 左クリック: WE無効化のためキャンセル
-            event.setCancelled(true);
+        if (CompassManager.TYPE_SHOP.equals(type)) {
+            // 1. コンパス針を即時更新
+            compassManager.updateShopCompass(event.getPlayer());
+            // 2. 範囲チェック → TP or 更新のみ
+            compassManager.handleShopCompassClick(event.getPlayer(), jobManager);
         }
+        // TYPE_WANTED や バニラコンパスはキャンセルのみ（WE無効化）
     }
 }

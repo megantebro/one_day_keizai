@@ -218,8 +218,8 @@ public class CompassManager {
     // ─── ショップコンパス更新（コンパス針をbackへ向ける）──────────
 
     private void updateShopCompass(Player player) {
-        // コンパスはback（ショップ内）を指す。frontに向けてもよいが遠い方が自然
-        Location target = shopBack != null ? shopBack : shopFront;
+        // コンパスはfront（入口）を指す
+        Location target = shopFront != null ? shopFront : shopBack;
         if (target == null) return;
         if (!Objects.equals(target.getWorld(), player.getWorld())) return;
         player.setCompassTarget(target);

@@ -66,10 +66,30 @@ public class ShopCommand implements CommandExecutor, TabCompleter {
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (!(sender instanceof Player player)) {
-            sender.sendMessage("プレイヤーのみ使用可能です。");
+
+        // ===== コマンドブロック / コンソールからの呼び出し =====
+        // /shop <player>           → プレイヤーを職業ショップへTP
+        // /shop <player> <shopKey> → プレイヤーを指定ショップへTP
+        if (!(sender instanceof Player)) {
+            if (args.length == 0) {
+                sender.sendMessage("使い方: /shop <player> [shopKey]");
+                return true;
+            }
+            Player target = Bukkit.getPlayer(args[0]);
+            if (target == null) {
+                sender.sendMessage("プレイヤーが見つかりません: " + args[0]);
+                return true;
+            }
+            if (args.length >= 2) {
+                teleportTo(target, args[1].toLowerCase());
+            } else {
+                teleportToJobShop(target);
+            }
             return true;
         }
+
+        // ===== プレイヤーからの呼び出し =====
+        Player player = (Player) sender;
 
         // /shop list
         if (args.length > 0 && args[0].equalsIgnoreCase("list")) {
@@ -88,17 +108,21 @@ public class ShopCommand implements CommandExecutor, TabCompleter {
         }
 
         // /shop — 自分の職業ショップへ
+        teleportToJobShop(player);
+        return true;
+    }
+
+    private void teleportToJobShop(Player player) {
         Job job = jobManager.getJob(player.getUniqueId());
         String shopKey = JOB_SHOP_MAP.get(job);
 
         if (shopKey == null) {
             player.sendMessage(ChatColor.RED + "職業を選択すると自分のショップへワープできます。");
             player.sendMessage(ChatColor.YELLOW + "/job select で職業を選んでください。");
-            return true;
+            return;
         }
 
         teleportTo(player, shopKey);
-        return true;
     }
 
     private void teleportTo(Player player, String key) {

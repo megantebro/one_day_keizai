@@ -41,8 +41,9 @@ public class JobCraftListener implements Listener {
         Material.IRON_LEGGINGS, Material.GOLDEN_LEGGINGS, Material.DIAMOND_LEGGINGS, Material.NETHERITE_LEGGINGS,
         // 防具: ブーツ
         Material.IRON_BOOTS, Material.GOLDEN_BOOTS, Material.DIAMOND_BOOTS, Material.NETHERITE_BOOTS,
-        // 盾・鍛冶設備
-        Material.SHIELD, Material.ANVIL, Material.SMITHING_TABLE, Material.GRINDSTONE
+        // 盾・鍛冶設備・大釜
+        Material.SHIELD, Material.ANVIL, Material.SMITHING_TABLE, Material.GRINDSTONE,
+        Material.CAULDRON
     );
 
     public JobCraftListener(JobManager jobManager) {

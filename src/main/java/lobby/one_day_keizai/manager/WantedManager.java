@@ -6,6 +6,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
 
 import java.util.Collections;
@@ -134,7 +135,8 @@ public class WantedManager {
         WantedEntry entry = wantedPlayers.remove(victimId);
         if (entry == null) return;
         entry.expiryTask.cancel();
-        // ネームタグはリスポーン時に clearWanted で更新
+        // ネームタグ即時リセット（リスポーン時の setNormal でも再度リセットされるが念のため）
+        nametagManager.clearWanted(victim);
     }
 
     // ─── 未払いキュー ─────────────────────────────────────────────────────────
@@ -183,5 +185,25 @@ public class WantedManager {
     public void clearWanted(UUID uuid) {
         WantedEntry entry = wantedPlayers.remove(uuid);
         if (entry != null) entry.expiryTask.cancel();
+        // オンラインならネームタグも即時リセット
+        Player player = Bukkit.getPlayer(uuid);
+        if (player != null) nametagManager.clearWanted(player);
+    }
+
+    /**
+     * 定期的にネームタグ状態を実態（wantedPlayers）と同期するタスクを開始する。
+     * プラグインリロード後や何らかの理由でネームタグが更新されなかった場合のフェイルセーフ。
+     * 5秒ごとに全オンラインプレイヤーを走査して正しい色に戻す。
+     */
+    public void startSyncTask() {
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                for (Player player : Bukkit.getOnlinePlayers()) {
+                    boolean isWanted = wantedPlayers.containsKey(player.getUniqueId());
+                    nametagManager.updateNametag(player, isWanted);
+                }
+            }
+        }.runTaskTimer(plugin, 100L, 100L); // 5秒ごと
     }
 }

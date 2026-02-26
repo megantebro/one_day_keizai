@@ -111,6 +111,7 @@ public final class One_day_keizai extends JavaPlugin {
         // コンパスマネージャー（リスナー登録前に初期化）
         CompassManager compassManager = new CompassManager(this, wantedManager, worldManager);
         compassManager.startUpdateTask();
+        wantedManager.startSyncTask(); // ネームタグ状態を定期同期（フェイルセーフ）
 
         // リスナー登録
         Bukkit.getPluginManager().registerEvents(

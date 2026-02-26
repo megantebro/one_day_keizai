@@ -1,5 +1,7 @@
 package lobby.one_day_keizai.command;
 
+import lobby.one_day_keizai.job.Job;
+import lobby.one_day_keizai.job.JobManager;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
@@ -15,22 +17,33 @@ import org.bukkit.plugin.java.JavaPlugin;
 import java.util.*;
 
 /**
- * /shop [名前] — ショップエリアへワープ
- * 引数なしで一覧表示。引数ありで指定ショップへ瞬間移動。
+ * /shop        — 自分の職業ショップへワープ
+ * /shop list   — ショップ一覧表示
+ * /shop <名前> — 指定ショップへワープ
  */
 public class ShopCommand implements CommandExecutor, TabCompleter {
 
     private final JavaPlugin plugin;
+    private final JobManager jobManager;
 
     /** key=コマンド引数(小文字), value={display, Location} */
     private final Map<String, ShopEntry> shops = new LinkedHashMap<>();
 
-    public ShopCommand(JavaPlugin plugin) {
+    /** 職業 → ショップキー のマッピング */
+    private static final Map<Job, String> JOB_SHOP_MAP = Map.of(
+        Job.FARMER,           "farmer",
+        Job.BLACKSMITH,       "blacksmith",
+        Job.ENCHANTER,        "blacksmith",   // 上級鍛冶屋
+        Job.MERCHANT,         "merchant",
+        Job.WEALTHY_MERCHANT, "merchant"      // 上級商人
+    );
+
+    public ShopCommand(JavaPlugin plugin, JobManager jobManager) {
         this.plugin = plugin;
+        this.jobManager = jobManager;
         reload();
     }
 
-    /** config から再読み込み */
     public void reload() {
         shops.clear();
         String worldName = plugin.getConfig().getString("shop-world", "economy");
@@ -44,7 +57,7 @@ public class ShopCommand implements CommandExecutor, TabCompleter {
             double x = section.getDouble(key + ".x");
             double y = section.getDouble(key + ".y");
             double z = section.getDouble(key + ".z");
-            float yaw = (float) section.getDouble(key + ".yaw", 0);
+            float yaw   = (float) section.getDouble(key + ".yaw", 0);
             float pitch = (float) section.getDouble(key + ".pitch", 0);
             Location loc = new Location(world, x + 0.5, y, z + 0.5, yaw, pitch);
             shops.put(key.toLowerCase(), new ShopEntry(display, loc));
@@ -58,27 +71,45 @@ public class ShopCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        if (args.length == 0) {
+        // /shop list
+        if (args.length > 0 && args[0].equalsIgnoreCase("list")) {
             showList(player);
             return true;
         }
 
-        String key = args[0].toLowerCase();
+        // /shop <名前> (直接指定)
+        if (args.length > 0) {
+            teleportTo(player, args[0].toLowerCase());
+            return true;
+        }
+
+        // /shop — 自分の職業ショップへ
+        Job job = jobManager.getJob(player.getUniqueId());
+        String shopKey = JOB_SHOP_MAP.get(job);
+
+        if (shopKey == null) {
+            player.sendMessage(ChatColor.RED + "職業を選択すると自分のショップへワープできます。");
+            player.sendMessage(ChatColor.YELLOW + "/job select で職業を選んでください。");
+            return true;
+        }
+
+        teleportTo(player, shopKey);
+        return true;
+    }
+
+    private void teleportTo(Player player, String key) {
         ShopEntry entry = shops.get(key);
         if (entry == null) {
-            player.sendMessage(ChatColor.RED + "ショップ \"" + args[0] + "\" が見つかりません。");
+            player.sendMessage(ChatColor.RED + "ショップ \"" + key + "\" が見つかりません。");
             showList(player);
-            return true;
+            return;
         }
-
         if (entry.location().getWorld() == null) {
             player.sendMessage(ChatColor.RED + "ショップのワールドが見つかりません。管理者に連絡してください。");
-            return true;
+            return;
         }
-
         player.teleport(entry.location());
         player.sendMessage(ChatColor.GREEN + "✦ " + entry.display() + " へワープしました！");
-        return true;
     }
 
     private void showList(Player player) {
@@ -93,6 +124,7 @@ public class ShopCommand implements CommandExecutor, TabCompleter {
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (args.length == 1) {
             List<String> completions = new ArrayList<>(shops.keySet());
+            completions.add("list");
             completions.removeIf(s -> !s.startsWith(args[0].toLowerCase()));
             return completions;
         }

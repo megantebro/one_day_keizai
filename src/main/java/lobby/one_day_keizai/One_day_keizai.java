@@ -144,7 +144,7 @@ public final class One_day_keizai extends JavaPlugin {
         getCommand("stock").setExecutor(stockCommand);
         getCommand("stock").setTabCompleter(stockCommand);
 
-        ShopCommand shopCommand = new ShopCommand(this);
+        ShopCommand shopCommand = new ShopCommand(this, jobManager);
         getCommand("shop").setExecutor(shopCommand);
         getCommand("shop").setTabCompleter(shopCommand);
 

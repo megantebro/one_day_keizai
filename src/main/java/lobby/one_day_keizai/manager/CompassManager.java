@@ -99,14 +99,28 @@ public class CompassManager {
      * @return true=TP成功, false=弾いた
      */
     public boolean handleShopCompassClick(Player player, JobManager jobManager) {
-        // ─ front 範囲チェック ─
+        double radius = plugin.getConfig().getDouble("compass-shop-front-radius", 3.0);
+
+        // ─ back 付近なら front へ帰還（職業チェック不要）─
+        if (shopBack != null
+                && Objects.equals(shopBack.getWorld(), player.getWorld())
+                && player.getLocation().distanceSquared(shopBack) <= radius * radius) {
+            if (shopFront == null) {
+                player.sendMessage(ChatColor.RED + "帰還先（front）が未設定です。OPに問い合わせてください。");
+                return false;
+            }
+            player.teleport(shopFront);
+            player.sendMessage(ChatColor.YELLOW + "ショップから戻りました。");
+            return true;
+        }
+
+        // ─ front 範囲チェック → back へ入場 ─
         if (shopFront != null) {
             if (!Objects.equals(shopFront.getWorld(), player.getWorld())) {
                 player.sendMessage(ChatColor.RED + "このコンパスは " +
                         shopFront.getWorld().getName() + " ワールドで使用してください。");
                 return false;
             }
-            double radius = plugin.getConfig().getDouble("compass-shop-front-radius", 15.0);
             if (player.getLocation().distanceSquared(shopFront) > radius * radius) {
                 player.sendMessage(ChatColor.RED + "ショップ入口付近でコンパスを使用してください！");
                 return false;
@@ -134,7 +148,7 @@ public class CompassManager {
             return false;
         }
 
-        // ─ TP ─
+        // ─ TP（入場）─
         player.teleport(shopBack);
         player.sendMessage(ChatColor.AQUA + "ショップへようこそ！");
         return true;

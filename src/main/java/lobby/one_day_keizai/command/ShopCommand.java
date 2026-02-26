@@ -77,8 +77,12 @@ public class ShopCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        // /shop <名前> (直接指定)
+        // /shop <名前> (直接指定) — OP専用
         if (args.length > 0) {
+            if (!player.isOp()) {
+                player.sendMessage(ChatColor.RED + "直接指定はOP専用です。");
+                return true;
+            }
             teleportTo(player, args[0].toLowerCase());
             return true;
         }
@@ -123,8 +127,9 @@ public class ShopCommand implements CommandExecutor, TabCompleter {
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (args.length == 1) {
-            List<String> completions = new ArrayList<>(shops.keySet());
+            List<String> completions = new ArrayList<>();
             completions.add("list");
+            if (sender.isOp()) completions.addAll(shops.keySet());
             completions.removeIf(s -> !s.startsWith(args[0].toLowerCase()));
             return completions;
         }

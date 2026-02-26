@@ -208,8 +208,17 @@ public class CompassManager {
 
     private void updatePlayerCompass(Player player) {
         ItemStack held = player.getInventory().getItemInMainHand();
+
+        // コンパス以外は何もしない
+        if (held == null || held.getType() != Material.COMPASS) return;
+
         String type = getCompassType(held);
-        if (type == null) return;
+
+        if (type == null) {
+            // バニラコンパス → ワールドスポーンを指すようにリセット
+            player.setCompassTarget(player.getWorld().getSpawnLocation());
+            return;
+        }
 
         switch (type) {
             case TYPE_SHOP   -> updateShopCompass(player);

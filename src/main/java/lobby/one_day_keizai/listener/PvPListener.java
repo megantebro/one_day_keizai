@@ -146,7 +146,10 @@ public class PvPListener implements Listener {
 
         UUID killerId = killer.getUniqueId();
 
-        if (wantedManager.isWanted(victimId)) {
+        // handleWantedDeath 前に「指名手配だったか」を記録しておく
+        boolean victimWasWanted = wantedManager.isWanted(victimId);
+
+        if (victimWasWanted) {
             wantedManager.handleWantedDeath(victim, killer);
         }
 
@@ -158,7 +161,8 @@ public class PvPListener implements Listener {
                     + String.format("%.0f", victimDeposit) + "G を奪われました。");
         }
 
-        if (inOverworld) {
+        // 指名手配中のプレイヤーを倒した場合は手配されない（正当防衛）
+        if (inOverworld && !victimWasWanted) {
             double bounty = playerDataManager.getOverworldDeposit(killerId);
             double currentBounty = wantedManager.isWanted(killerId)
                     ? wantedManager.getBounty(killerId) : bounty;

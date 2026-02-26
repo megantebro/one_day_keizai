@@ -141,8 +141,12 @@ public class WantedCompassUI implements Listener {
         // ─ TP 実行 ─
         viewer.teleport(tpLoc);
 
-        // ─ 低速落下付与 ─
-        viewer.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_FALLING, 300, 0, false, true, true));
+        // ─ 低速落下付与（5秒）─
+        viewer.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_FALLING, 100, 0, false, true, true));
+
+        // ─ お互いグロー（10秒）─
+        viewer.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING, 200, 0, false, true, true));
+        target.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING, 200, 0, false, true, true));
 
         // ─ 到着エフェクト（1tick後） ─
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
@@ -155,7 +159,7 @@ public class WantedCompassUI implements Listener {
         }, 1L);
 
         viewer.sendMessage(ChatColor.RED + "" + ChatColor.BOLD
-                + "▶ " + target.getName() + " の付近にTP！低速落下中……");
+                + "▶ " + target.getName() + " の付近にTP！お互い10秒間発光します……");
     }
 
     private float getYawTowards(Location from, Location to) {

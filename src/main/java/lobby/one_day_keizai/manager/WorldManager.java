@@ -80,9 +80,13 @@ public class WorldManager {
         Location tpLoc = new Location(overworld, tpX, tpY, tpZ, spawn.getYaw(), 30f);
 
         // 出発エフェクト
-        Location from = player.getLocation();
-        from.getWorld().spawnParticle(Particle.PORTAL, from, 150, 0.4, 1.0, 0.4, 0.4);
-        from.getWorld().playSound(from, Sound.ENTITY_ENDERMAN_TELEPORT, 1.0f, 0.7f);
+        try {
+            Location from = player.getLocation();
+            from.getWorld().spawnParticle(Particle.PORTAL, from, 150, 0.4, 1.0, 0.4, 0.4);
+            from.getWorld().playSound(from, Sound.ENTITY_ENDERMAN_TELEPORT, 1.0f, 0.7f);
+        } catch (Exception e) {
+            plugin.getLogger().warning("[WorldManager] 出発エフェクト中にエラー: " + e.getMessage());
+        }
 
         player.teleport(tpLoc);
 

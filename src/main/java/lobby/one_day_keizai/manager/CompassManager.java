@@ -1,5 +1,7 @@
 package lobby.one_day_keizai.manager;
 
+import lobby.one_day_keizai.job.Job;
+import lobby.one_day_keizai.job.JobManager;
 import org.bukkit.*;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -64,6 +66,48 @@ public class CompassManager {
     }
 
     public Location getShopTarget() { return shopTarget; }
+
+    /**
+     * ショップコンパス右クリック処理。
+     * config の compass-shop-allowed-jobs に含まれる職業のみTPを許可。
+     * @return true=TP成功, false=弾いた
+     */
+    public boolean handleShopCompassClick(Player player, JobManager jobManager) {
+        if (shopTarget == null) {
+            player.sendMessage(ChatColor.RED + "ショップ座標が未設定です。OPに問い合わせてください。");
+            return false;
+        }
+
+        Job job = jobManager.getJob(player.getUniqueId());
+
+        // 許可職業リスト（config: compass-shop-allowed-jobs）
+        List<String> allowedNames = plugin.getConfig().getStringList("compass-shop-allowed-jobs");
+        if (allowedNames.isEmpty()) {
+            // デフォルト: MERCHANT / WEALTHY_MERCHANT
+            allowedNames = List.of("MERCHANT", "WEALTHY_MERCHANT");
+        }
+
+        boolean allowed = player.isOp() ||
+                allowedNames.stream().anyMatch(name -> name.equalsIgnoreCase(job.name()));
+
+        if (!allowed) {
+            player.sendMessage(ChatColor.RED + "このショップは商人職業専用です！");
+            player.sendMessage(ChatColor.GOLD + "職業を変更するには " + ChatColor.WHITE + "/job select" + ChatColor.GOLD + " を使ってください。");
+            return false;
+        }
+
+        // 同ワールドでなければ TP 先ワールドが違う旨を案内
+        if (shopTarget.getWorld() != null &&
+                !shopTarget.getWorld().equals(player.getWorld())) {
+            player.sendMessage(ChatColor.RED + "このコンパスは " +
+                    shopTarget.getWorld().getName() + " ワールドで使用してください。");
+            return false;
+        }
+
+        player.teleport(shopTarget);
+        player.sendMessage(ChatColor.AQUA + "ショップへようこそ！");
+        return true;
+    }
 
     // ─── アイテム生成 ────────────────────────────────────────────
 

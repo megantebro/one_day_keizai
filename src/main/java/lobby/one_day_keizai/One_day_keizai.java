@@ -106,6 +106,10 @@ public final class One_day_keizai extends JavaPlugin {
         StockManager stockManager = new StockManager(this, economy, jobManager,
                 stockDataManager, stockSellFee, stockDividendRate, stockDividendIntervalMinutes);
 
+        // コンパスマネージャー（リスナー登録前に初期化）
+        CompassManager compassManager = new CompassManager(this, wantedManager, worldManager);
+        compassManager.startUpdateTask();
+
         // リスナー登録
         Bukkit.getPluginManager().registerEvents(
                 new PvPListener(economy, wantedManager, combatManager,
@@ -121,7 +125,7 @@ public final class One_day_keizai extends JavaPlugin {
                 new JobFarmListener(jobManager, safeWorldName), this);
         Bukkit.getPluginManager().registerEvents(new EnchantTableListener(jobManager), this);
         Bukkit.getPluginManager().registerEvents(new DonkeyChestListener(this, jobManager), this);
-        Bukkit.getPluginManager().registerEvents(new CompassListener(), this);
+        Bukkit.getPluginManager().registerEvents(new CompassListener(compassManager, jobManager), this);
 
         // 農家専用レシピ: 小麦俵 x1 → エンチャント瓶 x2
         NamespacedKey farmerHayRecipeKey = new NamespacedKey(this, "farmer_hay_to_xpbottle");
@@ -151,8 +155,6 @@ public final class One_day_keizai extends JavaPlugin {
         getCommand("shop").setExecutor(shopCommand);
         getCommand("shop").setTabCompleter(shopCommand);
 
-        CompassManager compassManager = new CompassManager(this, wantedManager, worldManager);
-        compassManager.startUpdateTask();
         CompassCommand compassCommand = new CompassCommand(compassManager);
         getCommand("compass").setExecutor(compassCommand);
         getCommand("compass").setTabCompleter(compassCommand);

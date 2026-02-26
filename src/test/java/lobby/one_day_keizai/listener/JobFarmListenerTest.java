@@ -34,7 +34,7 @@ class JobFarmListenerTest {
 
     @BeforeEach
     void setUp() {
-        listener = new JobFarmListener(jobManager, SAFE_WORLD);
+        listener = new JobFarmListener(jobManager, SAFE_WORLD, null);
         lenient().when(player.getUniqueId()).thenReturn(playerId);
         lenient().when(event.getPlayer()).thenReturn(player);
         lenient().when(event.getBlockPlaced()).thenReturn(block);
@@ -85,15 +85,16 @@ class JobFarmListenerTest {
         verify(event).setCancelled(true);
     }
 
-    // --- 危険ワールドでは制限なし ---
+    // --- どのワールドでも非農家は制限 ---
 
     @Test
-    void onBlockPlace_cropInOverworld_notRestricted() {
-        when(world.getName()).thenReturn("world"); // 危険ワールド → 早期リターンするのでblock.getType()は呼ばれない
+    void onBlockPlace_cropInOverworld_nonFarmer_stillCancels() {
+        when(block.getType()).thenReturn(Material.WHEAT);
+        when(jobManager.isFarmer(playerId)).thenReturn(false);
 
         listener.onBlockPlace(event);
 
-        verify(event, never()).setCancelled(true);
+        verify(event).setCancelled(true);
     }
 
     // --- 木材・その他は制限なし ---

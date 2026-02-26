@@ -1,29 +1,34 @@
 package lobby.one_day_keizai.listener;
 
 import lobby.one_day_keizai.job.JobManager;
-import org.bukkit.ChatColor;
-import org.bukkit.Material;
+import org.bukkit.*;
+import org.bukkit.block.Block;
+import org.bukkit.block.data.Ageable;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.plugin.java.JavaPlugin;
 
-import java.util.EnumSet;
-import java.util.Set;
+import java.util.*;
 
 public class JobFarmListener implements Listener {
 
     private final JobManager jobManager;
     private final String safeWorldName;
+    private final JavaPlugin plugin;
 
-    /**
-     * 農家専用の農作物ブロック一覧（設置・植え付けに使うアイテムのブロック形式）
-     * 種・芽・苗など「設置」に対応するブロック素材を列挙する。
-     */
+    /** 自動植え直しをOFFにしているプレイヤーUUID（デフォルトON） */
+    private final Set<UUID> autoReplantDisabled = new HashSet<>();
+
+    /** 農家専用の農作物ブロック一覧（設置・植え付けに使うアイテムのブロック形式） */
     private static final Set<Material> FARMER_ONLY_CROPS = EnumSet.of(
-        Material.WHEAT,           // 小麦の種を植えると生成されるブロック (CROPS)
-        Material.WHEAT_SEEDS,     // 手に持って右クリックで植える
+        Material.WHEAT,
+        Material.WHEAT_SEEDS,
         Material.CARROTS,
         Material.POTATOES,
         Material.BEETROOT_SEEDS,
@@ -36,34 +41,100 @@ public class JobFarmListener implements Listener {
         Material.COCOA,
         Material.SUGAR_CANE,
         Material.BAMBOO,
-        Material.CACTUS,
-        Material.FARMLAND          // 農地を耕す行為自体はOKだが農作物植えで制限
+        Material.CACTUS
     );
 
-    /**
-     * 木材系（サプリングの設置）は全員OK — このセットに含めない。
-     * 農作物のみを農家専用とする。
-     */
-    public JobFarmListener(JobManager jobManager, String safeWorldName) {
-        this.jobManager = jobManager;
+    /** 自動植え直し対象の作物（Ageableブロック） */
+    private static final Set<Material> AUTO_REPLANT_CROPS = EnumSet.of(
+        Material.WHEAT,
+        Material.CARROTS,
+        Material.POTATOES,
+        Material.BEETROOTS,
+        Material.NETHER_WART
+    );
+
+    public JobFarmListener(JobManager jobManager, String safeWorldName, JavaPlugin plugin) {
+        this.jobManager    = jobManager;
         this.safeWorldName = safeWorldName;
+        this.plugin        = plugin;
     }
+
+    // ─── 農作物の植え付け制限 ─────────────────────────────────────
 
     @EventHandler(priority = EventPriority.HIGH)
     public void onBlockPlace(BlockPlaceEvent event) {
         Player player = event.getPlayer();
-
-        // 安全ワールドのみ制限を適用
-        if (!player.getWorld().getName().equals(safeWorldName)) return;
-
         Material placed = event.getBlockPlaced().getType();
-        if (!FARMER_ONLY_CROPS.contains(placed)) return;
+        if (placed == null || !FARMER_ONLY_CROPS.contains(placed)) return;
 
-        // 農家以外はキャンセル
         if (!jobManager.isFarmer(player.getUniqueId())) {
             event.setCancelled(true);
             player.sendMessage(ChatColor.RED + "農作物の栽培は農家のみ可能です。");
-            player.sendMessage(ChatColor.YELLOW + "/job select farmer で農家になれます。");
+            player.sendMessage(ChatColor.YELLOW + "/job select と打って農家になれます。");
         }
+    }
+
+    // ─── 骨粉使用制限（農家のみ）─────────────────────────────────
+
+    @EventHandler(priority = EventPriority.HIGH)
+    public void onBoneMealUse(PlayerInteractEvent event) {
+        if (event.getAction() != org.bukkit.event.block.Action.RIGHT_CLICK_BLOCK) return;
+
+        ItemStack item = event.getItem();
+        if (item == null || item.getType() != Material.BONE_MEAL) return;
+
+        Player player = event.getPlayer();
+        if (!jobManager.isFarmer(player.getUniqueId())) {
+            event.setCancelled(true);
+            player.sendMessage(ChatColor.RED + "骨粉の使用は農家のみ可能です。");
+        }
+    }
+
+    // ─── 自動植え直し（農家パッシブスキル）────────────────────────
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onCropBreak(BlockBreakEvent event) {
+        Player player = event.getPlayer();
+
+        // 農家かつ自動植え直しONのみ
+        if (!jobManager.isFarmer(player.getUniqueId())) return;
+        if (autoReplantDisabled.contains(player.getUniqueId())) return;
+
+        Block block = event.getBlock();
+        if (!AUTO_REPLANT_CROPS.contains(block.getType())) return;
+
+        // 最大成長済みかチェック
+        if (!(block.getBlockData() instanceof Ageable ageable)) return;
+        if (ageable.getAge() < ageable.getMaximumAge()) return;
+
+        // 1tick後にブロックをage=0で植え直し
+        final Material cropType = block.getType();
+        final Location loc = block.getLocation();
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            Block target = loc.getBlock();
+            // 既に何かあれば植えない（他プレイヤーが設置した等）
+            if (target.getType() != Material.AIR) return;
+            target.setType(cropType);
+            if (target.getBlockData() instanceof Ageable a) {
+                a.setAge(0);
+                target.setBlockData(a);
+            }
+        }, 1L);
+    }
+
+    // ─── 自動植え直しトグル ───────────────────────────────────────
+
+    public boolean toggleAutoReplant(UUID uuid) {
+        if (autoReplantDisabled.contains(uuid)) {
+            autoReplantDisabled.remove(uuid);
+            return true;  // ON に戻した
+        } else {
+            autoReplantDisabled.add(uuid);
+            return false; // OFF にした
+        }
+    }
+
+    public boolean isAutoReplantEnabled(UUID uuid) {
+        return !autoReplantDisabled.contains(uuid);
     }
 }

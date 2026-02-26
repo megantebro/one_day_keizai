@@ -28,6 +28,9 @@ commands:
   compass:
     description: カスタムコンパスを入手
     usage: /compass <shop|wanted>
+  farm:
+    description: 農家スキル管理
+    usage: /farm autoplant
 
 permissions:
   one_day_keizai.ow:

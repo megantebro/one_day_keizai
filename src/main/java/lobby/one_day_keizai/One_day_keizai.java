@@ -1,6 +1,7 @@
 package lobby.one_day_keizai;
 
 import lobby.one_day_keizai.command.AuctionCommand;
+import lobby.one_day_keizai.command.FarmCommand;
 import lobby.one_day_keizai.command.CompassCommand;
 import lobby.one_day_keizai.command.ShopCommand;
 import lobby.one_day_keizai.manager.CompassManager;
@@ -121,8 +122,8 @@ public final class One_day_keizai extends JavaPlugin {
         Bukkit.getPluginManager().registerEvents(new WorldListener(), this);
         Bukkit.getPluginManager().registerEvents(new WantedListener(worldManager, wantedManager), this);
         Bukkit.getPluginManager().registerEvents(new JobCraftListener(jobManager), this);
-        Bukkit.getPluginManager().registerEvents(
-                new JobFarmListener(jobManager, safeWorldName), this);
+        JobFarmListener farmListener = new JobFarmListener(jobManager, safeWorldName, this);
+        Bukkit.getPluginManager().registerEvents(farmListener, this);
         Bukkit.getPluginManager().registerEvents(new EnchantTableListener(jobManager), this);
         Bukkit.getPluginManager().registerEvents(new DonkeyChestListener(this, jobManager), this);
         Bukkit.getPluginManager().registerEvents(new CompassListener(compassManager, jobManager), this);
@@ -154,6 +155,10 @@ public final class One_day_keizai extends JavaPlugin {
         ShopCommand shopCommand = new ShopCommand(this, jobManager);
         getCommand("shop").setExecutor(shopCommand);
         getCommand("shop").setTabCompleter(shopCommand);
+
+        FarmCommand farmCommand = new FarmCommand(jobManager, farmListener);
+        getCommand("farm").setExecutor(farmCommand);
+        getCommand("farm").setTabCompleter(farmCommand);
 
         CompassCommand compassCommand = new CompassCommand(compassManager);
         getCommand("compass").setExecutor(compassCommand);

@@ -23,9 +23,13 @@ import java.util.*;
 public class WantedCompassUI implements Listener {
 
     private static final String TITLE = ChatColor.RED + "" + ChatColor.BOLD + "賞金首一覧";
+    /** 賞金首コンパスTPのクールタイム（ミリ秒）: 15分 */
+    private static final long COOLDOWN_MS = 15 * 60 * 1000L;
 
     private final WantedManager wantedManager;
     private final JavaPlugin plugin;
+    /** key=プレイヤーUUID, value=最後にTPした時刻(ms) */
+    private final java.util.Map<UUID, Long> cooldowns = new java.util.concurrent.ConcurrentHashMap<>();
 
     public WantedCompassUI(WantedManager wantedManager, JavaPlugin plugin) {
         this.wantedManager = wantedManager;
@@ -98,7 +102,22 @@ public class WantedCompassUI implements Listener {
             return;
         }
 
+        // クールタイムチェック
+        long now = System.currentTimeMillis();
+        Long last = cooldowns.get(viewer.getUniqueId());
+        if (last != null && now - last < COOLDOWN_MS) {
+            long remaining = (COOLDOWN_MS - (now - last)) / 1000;
+            long mins = remaining / 60, secs = remaining % 60;
+            viewer.sendMessage(ChatColor.RED + "賞金首コンパスはクールタイム中です！"
+                    + ChatColor.YELLOW + " あと " + mins + "分" + secs + "秒");
+            viewer.closeInventory();
+            return;
+        }
+
         viewer.closeInventory();
+
+        // クールタイム記録
+        cooldowns.put(viewer.getUniqueId(), now);
 
         // 賞金首コンパスを消費（PDCで識別して1個削除）
         consumeWantedCompass(viewer);

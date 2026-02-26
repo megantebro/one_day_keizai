@@ -5,6 +5,7 @@ import lobby.one_day_keizai.job.JobManager;
 import org.bukkit.*;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.CompassMeta;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -17,9 +18,12 @@ import java.util.*;
  *  - SHOP    コンパス: front地点付近で右クリック → back地点(ショップ内)へTP
  *  - WANTED  コンパス: 最寄り指名手配プレイヤーを指す（overworld）
  *
+ * 針の向きはアイテム自体のロードストーン座標で管理（CompassMeta.setLodestone）。
+ * setCompassTarget は使わない（複数人で1人しか動かない問題を回避）。
+ *
  * config keys:
  *   compass-shop-front-world/x/y/z  … コンパスが反応する地点（入口）
- *   compass-shop-front-radius       … front の有効半径（デフォルト15）
+ *   compass-shop-front-radius       … front の有効半径（デフォルト3）
  *   compass-shop-back-world/x/y/z   … TP先（ショップ内）
  *   compass-shop-allowed-jobs       … 許可職業リスト
  */
@@ -33,7 +37,7 @@ public class CompassManager {
     private final WantedManager wantedManager;
     private final WorldManager worldManager;
 
-    /** コンパスが反応する入口地点（null=どこでも反応） */
+    /** コンパスが反応する入口地点 */
     private Location shopFront = null;
     /** TP先（ショップ内） */
     private Location shopBack  = null;
@@ -73,13 +77,11 @@ public class CompassManager {
         plugin.saveConfig();
     }
 
-    /** /compass setshop front — コンパスが反応する入口地点を設定 */
     public void setShopFront(Location loc) {
         this.shopFront = loc.clone();
         saveLocation("compass-shop-front", loc);
     }
 
-    /** /compass setshop back — TP先（ショップ内）を設定 */
     public void setShopBack(Location loc) {
         this.shopBack = loc.clone();
         saveLocation("compass-shop-back", loc);
@@ -88,21 +90,41 @@ public class CompassManager {
     public Location getShopFront() { return shopFront; }
     public Location getShopBack()  { return shopBack;  }
 
-    // ─── ショップコンパス右クリック処理 ─────────────────────────
+    // ─── ロードストーン座標をアイテムに書き込むヘルパー ──────────
 
     /**
-     * ショップコンパス右クリック処理。
-     *  1. front が設定済みなら、そこから compass-shop-front-radius 内にいるか確認
-     *  2. 許可職業チェック
-     *  3. back へTP
-     * @return true=TP成功, false=弾いた
+     * CompassMeta のロードストーン座標を更新する。
+     * setLodestoneTracked(false) にすることで実際のロードストーンブロック不要。
+     * アイテム自体に座標が入るため、誰が持っても同じ向きを指す。
      */
+    private void applyLodestone(ItemStack item, Location target) {
+        if (item == null || item.getType() != Material.COMPASS) return;
+        ItemMeta raw = item.getItemMeta();
+        if (!(raw instanceof CompassMeta meta)) return;
+        meta.setLodestone(target);
+        meta.setLodestoneTracked(false);
+        item.setItemMeta(meta);
+    }
+
+    /** 指定プレイヤーのインベントリ内のコンパスをすべて更新 */
+    private void applyLodestoneToAll(Player player, String compassType, Location target) {
+        ItemStack[] contents = player.getInventory().getContents();
+        for (ItemStack item : contents) {
+            if (item == null || item.getType() != Material.COMPASS) continue;
+            if (!compassType.equals(getCompassType(item))) continue;
+            applyLodestone(item, target);
+        }
+    }
+
+    // ─── ショップコンパス右クリック処理 ─────────────────────────
+
     public boolean handleShopCompassClick(Player player, JobManager jobManager) {
         double radius = plugin.getConfig().getDouble("compass-shop-front-radius", 3.0);
 
-        // ─ back 付近なら front へ帰還（職業チェック不要）─
+        // ─ back 付近なら front へ帰還 ─
         if (shopBack != null
-                && Objects.equals(shopBack.getWorld(), player.getWorld())
+                && shopBack.getWorld() != null
+                && shopBack.getWorld().getName().equals(player.getWorld().getName())
                 && player.getLocation().distanceSquared(shopBack) <= radius * radius) {
             if (shopFront == null) {
                 player.sendMessage(ChatColor.RED + "帰還先（front）が未設定です。OPに問い合わせてください。");
@@ -113,11 +135,13 @@ public class CompassManager {
             return true;
         }
 
-        // ─ front 範囲チェック → back へ入場 ─
+        // ─ front 範囲チェック ─
         if (shopFront != null) {
-            if (!Objects.equals(shopFront.getWorld(), player.getWorld())) {
+            if (shopFront.getWorld() == null
+                    || !shopFront.getWorld().getName().equals(player.getWorld().getName())) {
                 player.sendMessage(ChatColor.RED + "このコンパスは " +
-                        shopFront.getWorld().getName() + " ワールドで使用してください。");
+                        (shopFront.getWorld() != null ? shopFront.getWorld().getName() : "?") +
+                        " ワールドで使用してください。");
                 return false;
             }
             if (player.getLocation().distanceSquared(shopFront) > radius * radius) {
@@ -126,7 +150,6 @@ public class CompassManager {
             }
         }
 
-        // ─ back 未設定チェック ─
         if (shopBack == null) {
             player.sendMessage(ChatColor.RED + "ショップのTP先が未設定です。OPに問い合わせてください。");
             return false;
@@ -135,9 +158,7 @@ public class CompassManager {
         // ─ 職業チェック ─
         Job job = jobManager.getJob(player.getUniqueId());
         List<String> allowedNames = plugin.getConfig().getStringList("compass-shop-allowed-jobs");
-        if (allowedNames.isEmpty()) {
-            allowedNames = List.of("MERCHANT", "WEALTHY_MERCHANT");
-        }
+        if (allowedNames.isEmpty()) allowedNames = List.of("MERCHANT", "WEALTHY_MERCHANT");
         boolean allowed = player.isOp() ||
                 allowedNames.stream().anyMatch(name -> name.equalsIgnoreCase(job.name()));
         if (!allowed) {
@@ -147,7 +168,6 @@ public class CompassManager {
             return false;
         }
 
-        // ─ TP（入場）─
         player.teleport(shopBack);
         player.sendMessage(ChatColor.AQUA + "ショップへようこそ！");
         return true;
@@ -167,6 +187,8 @@ public class CompassManager {
         ));
         meta.getPersistentDataContainer().set(compassTypeKey, PersistentDataType.STRING, TYPE_SHOP);
         item.setItemMeta(meta);
+        // 初期ロードストーン設定（作成時点で front へ向ける）
+        if (shopFront != null) applyLodestone(item, shopFront);
         return item;
     }
 
@@ -206,55 +228,36 @@ public class CompassManager {
     }
 
     private void updatePlayerCompass(Player player) {
-        ItemStack mainHand = player.getInventory().getItemInMainHand();
-
-        // ─ まずメインハンドを確認 ─
-        if (mainHand != null && mainHand.getType() == Material.COMPASS) {
-            String type = getCompassType(mainHand);
-            if (type == null) {
-                // バニラコンパス → ワールドスポーンを指すようにリセット
-                player.setCompassTarget(player.getWorld().getSpawnLocation());
-            } else {
-                switch (type) {
-                    case TYPE_SHOP   -> updateShopCompass(player);
-                    case TYPE_WANTED -> updateWantedCompass(player);
-                }
-            }
-            return;
-        }
-
-        // ─ メインハンドにコンパスがない場合、インベントリ全体をスキャン ─
-        // カスタムコンパスがインベントリにあれば setCompassTarget を呼ぶ
-        // （economy等カスタムワールドではターゲット未設定だと針がくるくる回るため）
+        boolean hasShop = false, hasWanted = false;
         for (ItemStack item : player.getInventory().getContents()) {
             if (item == null || item.getType() != Material.COMPASS) continue;
             String type = getCompassType(item);
-            if (type == null) continue;
-            switch (type) {
-                case TYPE_SHOP   -> { updateShopCompass(player); return; }
-                case TYPE_WANTED -> { updateWantedCompass(player); return; }
-            }
+            if (TYPE_SHOP.equals(type))   hasShop = true;
+            if (TYPE_WANTED.equals(type)) hasWanted = true;
         }
+        if (hasShop)   updateShopCompass(player);
+        if (hasWanted) updateWantedCompass(player);
     }
 
-    // ─── ショップコンパス更新（コンパス針をbackへ向ける）──────────
+    // ─── ショップコンパス更新（ロードストーン書き換え）────────────
 
     public void updateShopCompass(Player player) {
-        // オーバーワールド → front を指す / economy → back を指す
+        // overworld → front を指す / economy → back を指す
         Location target;
         if (worldManager.isSafeWorld(player.getWorld())) {
-            // economy ワールドにいる → back（ショップ内出口）を指す
             target = shopBack != null ? shopBack : shopFront;
         } else {
-            // overworld にいる → front（ショップ入口）を指す
             target = shopFront != null ? shopFront : shopBack;
         }
         if (target == null) return;
-        if (!Objects.equals(target.getWorld(), player.getWorld())) return;
-        player.setCompassTarget(target);
+        // 異なるワールドの座標は指定不可（クロスワールドでは針が回転する）
+        if (target.getWorld() == null
+                || !target.getWorld().getName().equals(player.getWorld().getName())) return;
+
+        applyLodestoneToAll(player, TYPE_SHOP, target);
     }
 
-    // ─── 賞金首コンパス更新 ──────────────────────────────────────
+    // ─── 賞金首コンパス更新（ロードストーン書き換え）────────────
 
     private void updateWantedCompass(Player player) {
         Location nearest = null;
@@ -264,18 +267,14 @@ public class CompassManager {
         for (Player target : Bukkit.getOnlinePlayers()) {
             if (target.equals(player)) continue;
             if (!wantedManager.isWanted(target.getUniqueId())) continue;
-            if (!Objects.equals(target.getWorld(), player.getWorld())) continue;
+            if (target.getWorld() == null
+                    || !target.getWorld().getName().equals(player.getWorld().getName())) continue;
 
             double d = pLoc.distanceSquared(target.getLocation());
-            if (d < minDist) { minDist = d; nearest = target.getLocation(); }
+            if (d < minDist) { minDist = d; nearest = target.getLocation().clone(); }
         }
 
-        // setCompassTarget のみ使用（CompassMetaのlodestone書き換えは不要・競合の原因）
-        if (nearest != null) {
-            player.setCompassTarget(nearest);
-        } else {
-            // 同ワールドに賞金首がいない場合はスポーンを指す
-            player.setCompassTarget(player.getWorld().getSpawnLocation());
-        }
+        if (nearest == null) return; // 同ワールドに賞金首がいない → 変更しない
+        applyLodestoneToAll(player, TYPE_WANTED, nearest);
     }
 }

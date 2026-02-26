@@ -2,6 +2,7 @@ package lobby.one_day_keizai.listener;
 
 import lobby.one_day_keizai.job.JobManager;
 import lobby.one_day_keizai.manager.CompassManager;
+import lobby.one_day_keizai.ui.WantedCompassUI;
 import org.bukkit.Material;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -14,24 +15,25 @@ import org.bukkit.inventory.ItemStack;
 /**
  * コンパスの右クリック処理。
  *  - メインハンドでのみ動作
- *  - プラグイン製ショップコンパス:
- *      1. コンパス針を即時更新（ワールドに応じた方向へ）
- *      2. 範囲内ならTP (front付近→back入場 / back付近→front退場)
- *  - その他コンパス（バニラ/WE）: キャンセル（WE移動無効化）
+ *  - ショップコンパス: 即時更新 + 範囲内ならTP
+ *  - 賞金首コンパス: 賞金首一覧UIを開く
+ *  - バニラ/WEコンパス: キャンセル
  */
 public class CompassListener implements Listener {
 
     private final CompassManager compassManager;
-    private final JobManager jobManager;
+    private final JobManager     jobManager;
+    private final WantedCompassUI wantedCompassUI;
 
-    public CompassListener(CompassManager compassManager, JobManager jobManager) {
-        this.compassManager = compassManager;
-        this.jobManager     = jobManager;
+    public CompassListener(CompassManager compassManager, JobManager jobManager,
+                           WantedCompassUI wantedCompassUI) {
+        this.compassManager  = compassManager;
+        this.jobManager      = jobManager;
+        this.wantedCompassUI = wantedCompassUI;
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
     public void onCompassClick(PlayerInteractEvent event) {
-        // メインハンドのみ
         if (event.getHand() != EquipmentSlot.HAND) return;
 
         ItemStack held = event.getItem();
@@ -41,17 +43,17 @@ public class CompassListener implements Listener {
 
         boolean isRightClick = event.getAction() == Action.RIGHT_CLICK_AIR
                             || event.getAction() == Action.RIGHT_CLICK_BLOCK;
-
         if (!isRightClick) return;
 
         String type = compassManager.getCompassType(held);
 
         if (CompassManager.TYPE_SHOP.equals(type)) {
-            // 1. コンパス針を即時更新
             compassManager.updateShopCompass(event.getPlayer());
-            // 2. 範囲チェック → TP or 更新のみ
             compassManager.handleShopCompassClick(event.getPlayer(), jobManager);
+        } else if (CompassManager.TYPE_WANTED.equals(type)) {
+            // 賞金首コンパス → 一覧UIを開く
+            wantedCompassUI.open(event.getPlayer());
         }
-        // TYPE_WANTED や バニラコンパスはキャンセルのみ（WE無効化）
+        // バニラコンパスはキャンセルのみ（WE無効化）
     }
 }

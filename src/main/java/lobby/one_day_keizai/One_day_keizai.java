@@ -15,6 +15,7 @@ import lobby.one_day_keizai.item.BountyItem;
 import lobby.one_day_keizai.job.JobManager;
 import lobby.one_day_keizai.listener.*;
 import lobby.one_day_keizai.manager.*;
+import lobby.one_day_keizai.ui.WantedCompassUI;
 import net.milkbowl.vault.economy.Economy;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -126,7 +127,9 @@ public final class One_day_keizai extends JavaPlugin {
         Bukkit.getPluginManager().registerEvents(farmListener, this);
         Bukkit.getPluginManager().registerEvents(new EnchantTableListener(jobManager), this);
         Bukkit.getPluginManager().registerEvents(new DonkeyChestListener(this, jobManager), this);
-        Bukkit.getPluginManager().registerEvents(new CompassListener(compassManager, jobManager), this);
+        WantedCompassUI wantedCompassUI = new WantedCompassUI(wantedManager, this);
+        Bukkit.getPluginManager().registerEvents(wantedCompassUI, this);
+        Bukkit.getPluginManager().registerEvents(new CompassListener(compassManager, jobManager, wantedCompassUI), this);
 
         // 農家専用レシピ: 小麦俵 x1 → エンチャント瓶 x2
         NamespacedKey farmerHayRecipeKey = new NamespacedKey(this, "farmer_hay_to_xpbottle");

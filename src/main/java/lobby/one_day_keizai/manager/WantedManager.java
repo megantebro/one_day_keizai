@@ -8,7 +8,9 @@ import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitTask;
 
+import java.util.Collections;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -163,6 +165,11 @@ public class WantedManager {
 
     public boolean isWanted(UUID uuid) {
         return wantedPlayers.containsKey(uuid);
+    }
+
+    /** 現在指名手配中の全UUID */
+    public Set<UUID> getWantedUUIDs() {
+        return Collections.unmodifiableSet(wantedPlayers.keySet());
     }
 
     public double getBounty(UUID uuid) {

@@ -4,11 +4,17 @@ import lobby.one_day_keizai.data.PlayerDataManager;
 import net.milkbowl.vault.economy.Economy;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
+import org.bukkit.Location;
+import org.bukkit.Particle;
+import org.bukkit.Sound;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
 
 import java.util.HashSet;
+import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
 
@@ -63,8 +69,27 @@ public class WorldManager {
         economy.withdrawPlayer(player, entryFee);
         playerDataManager.setOverworldDeposit(player.getUniqueId(), entryFee);
 
-        player.teleport(overworld.getSpawnLocation());
-        player.sendMessage(ChatColor.GREEN + "オーバーワールドに入場しました。");
+        // スポーン付近50ブロック以内のランダム位置・上空30〜50ブロックにTP
+        Location spawn = overworld.getSpawnLocation();
+        Random rng = new Random();
+        double angle    = rng.nextDouble() * 2 * Math.PI;
+        double distance = 10 + rng.nextDouble() * 40;   // 10〜50ブロック
+        double tpX = spawn.getX() + Math.cos(angle) * distance;
+        double tpZ = spawn.getZ() + Math.sin(angle) * distance;
+        double tpY = Math.min(spawn.getY() + 30 + rng.nextDouble() * 20, overworld.getMaxHeight() - 5);
+        Location tpLoc = new Location(overworld, tpX, tpY, tpZ, spawn.getYaw(), 30f);
+
+        // 出発エフェクト
+        Location from = player.getLocation();
+        from.getWorld().spawnParticle(Particle.PORTAL, from, 150, 0.4, 1.0, 0.4, 0.4);
+        from.getWorld().playSound(from, Sound.ENTITY_ENDERMAN_TELEPORT, 1.0f, 0.7f);
+
+        player.teleport(tpLoc);
+
+        // 低速落下（5秒）
+        player.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_FALLING, 100, 0, false, true, true));
+
+        player.sendMessage(ChatColor.GREEN + "オーバーワールドに入場しました！上空から降下中……");
         if (entryFee > 0) {
             player.sendMessage(ChatColor.YELLOW + "入場料: " + ChatColor.GOLD + String.format("$%.0f", entryFee)
                     + ChatColor.YELLOW + "（所持金の10%、上限$20,000）");

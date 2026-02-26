@@ -44,6 +44,8 @@ class WorldManagerTest {
         lenient().when(overworld.getName()).thenReturn("world");
         lenient().when(overworld.getSpawnLocation()).thenReturn(new Location(overworld, 0, 64, 0));
         lenient().when(safeWorld.getSpawnLocation()).thenReturn(new Location(safeWorld, 0, 64, 0));
+        lenient().when(overworld.getMaxHeight()).thenReturn(320);
+        lenient().when(player.getLocation()).thenReturn(new Location(safeWorld, 0, 64, 0));
     }
 
     @Test
@@ -81,7 +83,8 @@ class WorldManagerTest {
             // 入場料 = 5000 * 10% = 500
             verify(economy).withdrawPlayer(player, 500.0);
             verify(playerDataManager).setOverworldDeposit(playerId, 500.0);
-            verify(player).teleport(overworld.getSpawnLocation());
+            // スポーン付近ランダム位置なのでany(Location)で検証
+            verify(player).teleport(any(Location.class));
         }
     }
 

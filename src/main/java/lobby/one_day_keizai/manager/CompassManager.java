@@ -5,7 +5,6 @@ import lobby.one_day_keizai.job.JobManager;
 import org.bukkit.*;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.CompassMeta;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -259,16 +258,12 @@ public class CompassManager {
             if (d < minDist) { minDist = d; nearest = target.getLocation(); }
         }
 
+        // setCompassTarget のみ使用（CompassMetaのlodestone書き換えは不要・競合の原因）
         if (nearest != null) {
             player.setCompassTarget(nearest);
-            ItemStack held = player.getInventory().getItemInMainHand();
-            if (held.getItemMeta() instanceof CompassMeta cm) {
-                cm.setLodestone(nearest);
-                cm.setLodestoneTracked(false);
-                held.setItemMeta(cm);
-            }
         } else {
-            player.setCompassTarget(player.getLocation());
+            // 同ワールドに賞金首がいない場合はスポーンを指す
+            player.setCompassTarget(player.getWorld().getSpawnLocation());
         }
     }
 }

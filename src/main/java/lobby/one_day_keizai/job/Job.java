@@ -50,6 +50,7 @@ public enum Job {
     public Job getUpperJob() {
         return switch (this) {
             case BLACKSMITH -> ENCHANTER;
+            case FARMER     -> CAPITALIST;
             default         -> null;
         };
     }

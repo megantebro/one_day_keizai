@@ -99,17 +99,18 @@ class JobTest {
     // ─── getUpperJob ─────────────────────────────────────────────────────────
 
     @Test
-    void getUpperJob_onlyBlacksmithCanPromote() {
-        // 鍛冶屋のみエンチャンターへの昇格パスを持つ
-        assertNull(Job.FARMER.getUpperJob());
+    void getUpperJob_promotionPaths() {
+        // 鍛冶屋 → エンチャンター
         assertEquals(Job.ENCHANTER, Job.BLACKSMITH.getUpperJob());
+        // 農家 → 資本家
+        assertEquals(Job.CAPITALIST, Job.FARMER.getUpperJob());
+        // 商人 → 富裕商人は未設定（null）
         assertNull(Job.MERCHANT.getUpperJob());
     }
 
     @Test
     void getUpperJob_nonPromotableJobsReturnNull() {
         assertNull(Job.NONE.getUpperJob());
-        assertNull(Job.FARMER.getUpperJob());
         assertNull(Job.MERCHANT.getUpperJob());
         assertNull(Job.CAPITALIST.getUpperJob());
         assertNull(Job.ENCHANTER.getUpperJob());

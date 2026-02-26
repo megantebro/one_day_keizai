@@ -223,7 +223,8 @@ public class JobCommand implements CommandExecutor, TabCompleter {
             }
             case CAPITALIST -> {
                 player.sendMessage(ChatColor.GREEN + "  資本家の特権 (農家の全特権 + ):");
-                player.sendMessage(ChatColor.WHITE + "  - 投資商材の売買ができます（準備中）");
+                player.sendMessage(ChatColor.WHITE + "  - 株・投資システムを利用できます (/stock)");
+                player.sendMessage(ChatColor.WHITE + "  - 企業株の売買・配当収入を得られます");
             }
             case ENCHANTER -> {
                 player.sendMessage(ChatColor.YELLOW + "  エンチャンターの特権 (鍛冶屋の全特権 + ):");
@@ -243,7 +244,7 @@ public class JobCommand implements CommandExecutor, TabCompleter {
             case FARMER          -> "安全ワールドで農作物を栽培できる";
             case BLACKSMITH      -> "鉄以上のツール・装備をクラフトできる";
             case MERCHANT        -> "遠方ショップにアクセスできる";
-            case CAPITALIST      -> "投資商材の売買ができる（準備中）";
+            case CAPITALIST      -> "株・投資システム利用可能。農家の全特権 + 配当収入";
             case ENCHANTER       -> "エンチャントテーブルが使える";
             case WEALTHY_MERCHANT -> "豪商専用ショップ＆ロバ3倍チェスト";
             default              -> "";

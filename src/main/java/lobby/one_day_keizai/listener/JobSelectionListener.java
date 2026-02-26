@@ -5,7 +5,9 @@ import lobby.one_day_keizai.job.JobManager;
 import lobby.one_day_keizai.manager.NametagManager;
 import lobby.one_day_keizai.ui.JobSelectionUI;
 import org.bukkit.ChatColor;
+import org.bukkit.Material;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
@@ -48,6 +50,19 @@ public class JobSelectionListener implements Listener {
         Job job = JobSelectionUI.getJobForSlot(slot);
         if (job == null) return; // 関係ないスロット
 
+        Job current = jobManager.getJob(player.getUniqueId());
+
+        // すでに職業を持っている場合、ネザースターが必要
+        if (current != Job.NONE && !current.isUpperTier()) {
+            if (!consumeNetherStar(player)) {
+                player.sendMessage(ChatColor.RED + "職業を変更するには " +
+                        ChatColor.WHITE + "ネザースター" + ChatColor.RED + " が1つ必要です！");
+                player.sendMessage(ChatColor.GRAY + "現在の職業: " + current.getColorCode() + current.getDisplayName());
+                player.closeInventory();
+                return;
+            }
+        }
+
         jobManager.setJob(player.getUniqueId(), job);
         nametagManager.refreshJob(player);
         player.closeInventory();
@@ -66,6 +81,23 @@ public class JobSelectionListener implements Listener {
         if (JobSelectionUI.isJobSelectionUI(event.getView().getTitle())) {
             event.setCancelled(true);
         }
+    }
+
+    /** インベントリからネザースターを1つ消費する。持っていない場合は false を返す。 */
+    private boolean consumeNetherStar(Player player) {
+        ItemStack[] contents = player.getInventory().getContents();
+        for (int i = 0; i < contents.length; i++) {
+            ItemStack item = contents[i];
+            if (item != null && item.getType() == Material.NETHER_STAR) {
+                if (item.getAmount() > 1) {
+                    item.setAmount(item.getAmount() - 1);
+                } else {
+                    player.getInventory().setItem(i, null);
+                }
+                return true;
+            }
+        }
+        return false;
     }
 
     private void sendJobWelcome(Player player, Job job) {

@@ -11,7 +11,9 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
+import org.bukkit.Material;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 
 import java.text.NumberFormat;
 import java.util.ArrayList;
@@ -92,10 +94,37 @@ public class JobCommand implements CommandExecutor, TabCompleter {
             return;
         }
 
+        // すでに職業を持っている場合、ネザースターが必要
+        if (current != Job.NONE) {
+            if (!consumeNetherStar(player)) {
+                player.sendMessage(ChatColor.RED + "職業を変更するには " +
+                        ChatColor.WHITE + "ネザースター" + ChatColor.RED + " が1つ必要です！");
+                player.sendMessage(ChatColor.GRAY + "現在の職業: " + current.getColorCode() + current.getDisplayName());
+                return;
+            }
+        }
+
         jobManager.setJob(player.getUniqueId(), job);
         nametagManager.refreshJob(player);
         player.sendMessage(ChatColor.GREEN + "職業を " + job.getColorCode() + job.getDisplayName() + ChatColor.GREEN + " に変更しました。");
         sendJobDescription(player, job);
+    }
+
+    /** インベントリからネザースターを1つ消費する。持っていない場合は false を返す。 */
+    private boolean consumeNetherStar(Player player) {
+        ItemStack[] contents = player.getInventory().getContents();
+        for (int i = 0; i < contents.length; i++) {
+            ItemStack item = contents[i];
+            if (item != null && item.getType() == Material.NETHER_STAR) {
+                if (item.getAmount() > 1) {
+                    item.setAmount(item.getAmount() - 1);
+                } else {
+                    player.getInventory().setItem(i, null);
+                }
+                return true;
+            }
+        }
+        return false;
     }
 
     // ─── promote ───────────────────────────────────────────────────────────────

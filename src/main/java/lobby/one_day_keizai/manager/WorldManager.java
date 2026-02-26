@@ -19,20 +19,27 @@ public class WorldManager {
     private final PlayerDataManager playerDataManager;
     private final String safeWorldName;
     private final String overworldName;
-    private final double entryFee;
-    private final double refundRatio;
     private final Set<UUID> diedInOverworld = new HashSet<>();
 
+    /** 入場料上限 */
+    private static final double MAX_ENTRY_FEE = 20000.0;
+    /** 入場料率（所持金の10%） */
+    private static final double ENTRY_FEE_RATE = 0.1;
+
     public WorldManager(JavaPlugin plugin, Economy economy, PlayerDataManager playerDataManager,
-                        String safeWorldName, String overworldName,
-                        double entryFee, double refundRatio) {
+                        String safeWorldName, String overworldName) {
         this.plugin = plugin;
         this.economy = economy;
         this.playerDataManager = playerDataManager;
         this.safeWorldName = safeWorldName;
         this.overworldName = overworldName;
-        this.entryFee = entryFee;
-        this.refundRatio = refundRatio;
+    }
+
+    /**
+     * 入場料を動的計算（所持金の10%、上限2万）
+     */
+    public double calculateEntryFee(double balance) {
+        return Math.min(balance * ENTRY_FEE_RATE, MAX_ENTRY_FEE);
     }
 
     /**
@@ -51,28 +58,25 @@ public class WorldManager {
         }
 
         double balance = economy.getBalance(player);
-        if (balance < entryFee) {
-            player.sendMessage(ChatColor.RED + "入場料が足りません。必要: " +
-                    ChatColor.GOLD + String.format("$%.0f", entryFee) +
-                    ChatColor.RED + " / 所持金: " +
-                    ChatColor.GOLD + String.format("$%.0f", balance));
-            return false;
-        }
+        double entryFee = calculateEntryFee(balance);
 
         economy.withdrawPlayer(player, entryFee);
         playerDataManager.setOverworldDeposit(player.getUniqueId(), entryFee);
 
         player.teleport(overworld.getSpawnLocation());
         player.sendMessage(ChatColor.GREEN + "オーバーワールドに入場しました。");
-        player.sendMessage(ChatColor.YELLOW + "入場料: " + ChatColor.GOLD + String.format("$%.0f", entryFee));
-        player.sendMessage(ChatColor.YELLOW + "生還すれば " +
-                ChatColor.GOLD + String.format("$%.0f", entryFee * refundRatio) +
-                ChatColor.YELLOW + " が返金されます。");
+        if (entryFee > 0) {
+            player.sendMessage(ChatColor.YELLOW + "入場料: " + ChatColor.GOLD + String.format("$%.0f", entryFee)
+                    + ChatColor.YELLOW + "（所持金の10%、上限$20,000）");
+            player.sendMessage(ChatColor.YELLOW + "生還すれば " +
+                    ChatColor.GOLD + String.format("$%.0f", entryFee) +
+                    ChatColor.YELLOW + " が全額返金されます。");
+        }
         return true;
     }
 
     /**
-     * 安全ワールドへ帰還する。デポジットの一部を返金。
+     * 安全ワールドへ帰還する。デポジットを全額返金。
      */
     public boolean returnToSafeWorld(Player player) {
         if (!isInOverworld(player)) {
@@ -88,17 +92,17 @@ public class WorldManager {
 
         UUID playerId = player.getUniqueId();
         double deposit = playerDataManager.getOverworldDeposit(playerId);
-        double refund = deposit * refundRatio;
 
-        if (refund > 0) {
-            economy.depositPlayer(player, refund);
+        if (deposit > 0) {
+            economy.depositPlayer(player, deposit);
         }
         playerDataManager.clearOverworldDeposit(playerId);
 
         player.teleport(safeWorld.getSpawnLocation());
         player.sendMessage(ChatColor.GREEN + "安全ワールドに帰還しました。");
-        if (refund > 0) {
-            player.sendMessage(ChatColor.GREEN + "返金額: " + ChatColor.GOLD + String.format("$%.0f", refund));
+        if (deposit > 0) {
+            player.sendMessage(ChatColor.GREEN + "返金額: " + ChatColor.GOLD + String.format("$%.0f", deposit)
+                    + ChatColor.GREEN + "（全額返金）");
         }
         return true;
     }
@@ -150,11 +154,8 @@ public class WorldManager {
         return overworldName;
     }
 
-    public double getEntryFee() {
-        return entryFee;
-    }
-
-    public double getRefundRatio() {
-        return refundRatio;
+    /** 後方互換用: プレイヤーの現在残高から入場料を返す */
+    public double getEntryFee(Player player) {
+        return calculateEntryFee(economy.getBalance(player));
     }
 }

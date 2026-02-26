@@ -2,7 +2,9 @@ package lobby.one_day_keizai.command;
 
 import lobby.one_day_keizai.manager.WantedManager;
 import lobby.one_day_keizai.manager.WorldManager;
+import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
+import org.bukkit.command.BlockCommandSender;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -24,14 +26,28 @@ public class OverworldCommand implements CommandExecutor, TabCompleter {
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (!(sender instanceof Player player)) {
-            sender.sendMessage("プレイヤーのみ使用可能です。");
+        if (args.length == 0) {
+            if (sender instanceof Player p) sendUsage(p);
+            else sender.sendMessage("使い方: /ow enter <player> | /ow return <player>");
             return true;
         }
 
-        if (args.length == 0) {
-            sendUsage(player);
-            return true;
+        // ターゲットプレイヤーを解決
+        // Playerから実行: 引数なしで自分自身 / コマンドブロック・コンソール: args[1]にプレイヤー名が必要
+        Player player;
+        if (sender instanceof Player p) {
+            player = p;
+        } else {
+            // コマンドブロック or コンソール → プレイヤー名が必要
+            if (args.length < 2) {
+                sender.sendMessage("コマンドブロックからの使い方: /ow enter <player> | /ow return <player>");
+                return true;
+            }
+            player = Bukkit.getPlayer(args[1]);
+            if (player == null) {
+                sender.sendMessage("プレイヤーが見つかりません: " + args[1]);
+                return true;
+            }
         }
 
         switch (args[0].toLowerCase()) {
@@ -45,27 +61,31 @@ public class OverworldCommand implements CommandExecutor, TabCompleter {
                 }
                 // 安全ワールド内（ショップ等）→ スポーン地点へ直接TP
                 if (worldManager.isSafeWorld(player.getWorld())) {
-                    org.bukkit.World safeWorld = org.bukkit.Bukkit.getWorld(
-                            worldManager.getSafeWorldName());
+                    org.bukkit.World safeWorld = Bukkit.getWorld(worldManager.getSafeWorldName());
                     if (safeWorld != null) {
                         player.teleport(safeWorld.getSpawnLocation());
-                        player.sendMessage(org.bukkit.ChatColor.GREEN + "スポーン地点に戻りました。");
+                        player.sendMessage(ChatColor.GREEN + "スポーン地点に戻りました。");
                     }
                 } else {
                     worldManager.returnToSafeWorld(player);
                 }
             }
-            default -> sendUsage(player);
+            default -> {
+                if (sender instanceof Player p) sendUsage(p);
+                else sender.sendMessage("使い方: /ow enter <player> | /ow return <player>");
+            }
         }
 
         return true;
     }
 
     private void sendUsage(Player player) {
+        double fee = worldManager.getEntryFee(player);
         player.sendMessage(ChatColor.YELLOW + "=== オーバーワールド ===");
         player.sendMessage(ChatColor.GOLD + "/ow enter" + ChatColor.WHITE + " - オーバーワールドへ入場（入場料: " +
-                ChatColor.GOLD + String.format("$%.0f", worldManager.getEntryFee()) + ChatColor.WHITE + "）");
-        player.sendMessage(ChatColor.GOLD + "/ow return" + ChatColor.WHITE + " - 安全ワールドへ帰還（返金あり）");
+                ChatColor.GOLD + String.format("$%.0f", fee) +
+                ChatColor.WHITE + " ／所持金の10%・上限$20,000）");
+        player.sendMessage(ChatColor.GOLD + "/ow return" + ChatColor.WHITE + " - 安全ワールドへ帰還（全額返金）");
     }
 
     @Override

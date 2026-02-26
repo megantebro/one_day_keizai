@@ -55,8 +55,7 @@ public final class One_day_keizai extends JavaPlugin {
         int auctionDurationSeconds = getConfig().getInt("auction-duration-seconds", 120);
         String safeWorldName = getConfig().getString("safe-world-name", "economy");
         String overworldName = getConfig().getString("overworld-name", "world");
-        double overworldEntryFee = getConfig().getDouble("overworld-entry-fee", 1000);
-        double overworldRefundRatio = getConfig().getDouble("overworld-refund-ratio", 0.8);
+        // 入場料は動的計算（所持金の10%、上限2万）のためconfig不要
 
         // データ管理
         playerDataManager = new PlayerDataManager(this);
@@ -88,7 +87,7 @@ public final class One_day_keizai extends JavaPlugin {
 
         WorldManager worldManager = new WorldManager(
                 this, economy, playerDataManager,
-                safeWorldName, overworldName, overworldEntryFee, overworldRefundRatio);
+                safeWorldName, overworldName);
 
         WantedManager wantedManager = new WantedManager(this, nametagManager, economy, playerDataManager, wantedDurationSeconds);
 

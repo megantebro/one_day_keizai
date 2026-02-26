@@ -35,7 +35,7 @@ class WorldManagerTest {
     @BeforeEach
     void setUp() {
         worldManager = new WorldManager(plugin, economy, playerDataManager,
-                "economy", "world", 1000.0, 0.8);
+                "economy", "world");
 
         lenient().when(player.getUniqueId()).thenReturn(playerId);
         lenient().when(player.getName()).thenReturn("TestPlayer");
@@ -44,6 +44,27 @@ class WorldManagerTest {
         lenient().when(overworld.getName()).thenReturn("world");
         lenient().when(overworld.getSpawnLocation()).thenReturn(new Location(overworld, 0, 64, 0));
         lenient().when(safeWorld.getSpawnLocation()).thenReturn(new Location(safeWorld, 0, 64, 0));
+    }
+
+    @Test
+    void calculateEntryFee_tenPercentOfBalance() {
+        // 通常: 所持金の10%
+        assertEquals(500.0, worldManager.calculateEntryFee(5000.0), 0.01);
+        assertEquals(1000.0, worldManager.calculateEntryFee(10000.0), 0.01);
+    }
+
+    @Test
+    void calculateEntryFee_cappedAt20000() {
+        // 上限2万
+        assertEquals(20000.0, worldManager.calculateEntryFee(300000.0), 0.01);
+        assertEquals(20000.0, worldManager.calculateEntryFee(200000.0), 0.01);
+        // ちょうど境界: 200000 * 0.1 = 20000
+        assertEquals(20000.0, worldManager.calculateEntryFee(200000.0), 0.01);
+    }
+
+    @Test
+    void calculateEntryFee_zeroBalance() {
+        assertEquals(0.0, worldManager.calculateEntryFee(0.0), 0.01);
     }
 
     @Test
@@ -57,24 +78,27 @@ class WorldManagerTest {
             boolean result = worldManager.enterOverworld(player);
 
             assertTrue(result);
-            verify(economy).withdrawPlayer(player, 1000.0);
-            verify(playerDataManager).setOverworldDeposit(playerId, 1000.0);
+            // 入場料 = 5000 * 10% = 500
+            verify(economy).withdrawPlayer(player, 500.0);
+            verify(playerDataManager).setOverworldDeposit(playerId, 500.0);
             verify(player).teleport(overworld.getSpawnLocation());
         }
     }
 
     @Test
-    void enterOverworld_insufficientBalance() {
+    void enterOverworld_largBalance_capped() {
         when(player.getWorld()).thenReturn(safeWorld);
-        when(economy.getBalance(player)).thenReturn(500.0);
+        when(economy.getBalance(player)).thenReturn(300000.0);
 
         try (MockedStatic<Bukkit> bukkit = mockStatic(Bukkit.class)) {
             bukkit.when(() -> Bukkit.getWorld("world")).thenReturn(overworld);
 
             boolean result = worldManager.enterOverworld(player);
 
-            assertFalse(result);
-            verify(economy, never()).withdrawPlayer(any(Player.class), anyDouble());
+            assertTrue(result);
+            // 入場料上限: 20000
+            verify(economy).withdrawPlayer(player, 20000.0);
+            verify(playerDataManager).setOverworldDeposit(playerId, 20000.0);
         }
     }
 
@@ -89,9 +113,9 @@ class WorldManagerTest {
     }
 
     @Test
-    void returnToSafeWorld_success() {
+    void returnToSafeWorld_success_fullRefund() {
         when(player.getWorld()).thenReturn(overworld);
-        when(playerDataManager.getOverworldDeposit(playerId)).thenReturn(1000.0);
+        when(playerDataManager.getOverworldDeposit(playerId)).thenReturn(500.0);
 
         try (MockedStatic<Bukkit> bukkit = mockStatic(Bukkit.class)) {
             bukkit.when(() -> Bukkit.getWorld("economy")).thenReturn(safeWorld);
@@ -99,8 +123,8 @@ class WorldManagerTest {
             boolean result = worldManager.returnToSafeWorld(player);
 
             assertTrue(result);
-            // 80%返金
-            verify(economy).depositPlayer(player, 800.0);
+            // 100%返金
+            verify(economy).depositPlayer(player, 500.0);
             verify(playerDataManager).clearOverworldDeposit(playerId);
             verify(player).teleport(safeWorld.getSpawnLocation());
         }
@@ -118,7 +142,7 @@ class WorldManagerTest {
 
     @Test
     void handleOverworldDeath_confiscatesDeposit() {
-        when(playerDataManager.getOverworldDeposit(playerId)).thenReturn(1000.0);
+        when(playerDataManager.getOverworldDeposit(playerId)).thenReturn(500.0);
 
         worldManager.handleOverworldDeath(player);
 
@@ -127,7 +151,7 @@ class WorldManagerTest {
 
     @Test
     void consumeDiedInOverworld_returnsTrueAfterDeath() {
-        when(playerDataManager.getOverworldDeposit(playerId)).thenReturn(1000.0);
+        when(playerDataManager.getOverworldDeposit(playerId)).thenReturn(500.0);
 
         worldManager.handleOverworldDeath(player);
 

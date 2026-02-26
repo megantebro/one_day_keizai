@@ -206,22 +206,34 @@ public class CompassManager {
     }
 
     private void updatePlayerCompass(Player player) {
-        ItemStack held = player.getInventory().getItemInMainHand();
+        ItemStack mainHand = player.getInventory().getItemInMainHand();
 
-        // コンパス以外は何もしない
-        if (held == null || held.getType() != Material.COMPASS) return;
-
-        String type = getCompassType(held);
-
-        if (type == null) {
-            // バニラコンパス → ワールドスポーンを指すようにリセット
-            player.setCompassTarget(player.getWorld().getSpawnLocation());
+        // ─ まずメインハンドを確認 ─
+        if (mainHand != null && mainHand.getType() == Material.COMPASS) {
+            String type = getCompassType(mainHand);
+            if (type == null) {
+                // バニラコンパス → ワールドスポーンを指すようにリセット
+                player.setCompassTarget(player.getWorld().getSpawnLocation());
+            } else {
+                switch (type) {
+                    case TYPE_SHOP   -> updateShopCompass(player);
+                    case TYPE_WANTED -> updateWantedCompass(player);
+                }
+            }
             return;
         }
 
-        switch (type) {
-            case TYPE_SHOP   -> updateShopCompass(player);
-            case TYPE_WANTED -> updateWantedCompass(player);
+        // ─ メインハンドにコンパスがない場合、インベントリ全体をスキャン ─
+        // カスタムコンパスがインベントリにあれば setCompassTarget を呼ぶ
+        // （economy等カスタムワールドではターゲット未設定だと針がくるくる回るため）
+        for (ItemStack item : player.getInventory().getContents()) {
+            if (item == null || item.getType() != Material.COMPASS) continue;
+            String type = getCompassType(item);
+            if (type == null) continue;
+            switch (type) {
+                case TYPE_SHOP   -> { updateShopCompass(player); return; }
+                case TYPE_WANTED -> { updateWantedCompass(player); return; }
+            }
         }
     }
 

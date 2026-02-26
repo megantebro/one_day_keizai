@@ -121,6 +121,7 @@ public final class One_day_keizai extends JavaPlugin {
                 new JobFarmListener(jobManager, safeWorldName), this);
         Bukkit.getPluginManager().registerEvents(new EnchantTableListener(jobManager), this);
         Bukkit.getPluginManager().registerEvents(new DonkeyChestListener(this, jobManager), this);
+        Bukkit.getPluginManager().registerEvents(new CompassListener(), this);
 
         // 農家専用レシピ: 小麦俵 x1 → エンチャント瓶 x2
         NamespacedKey farmerHayRecipeKey = new NamespacedKey(this, "farmer_hay_to_xpbottle");

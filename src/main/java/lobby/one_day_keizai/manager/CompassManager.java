@@ -1,8 +1,6 @@
 package lobby.one_day_keizai.manager;
 
-import lobby.one_day_keizai.One_day_keizai;
 import org.bukkit.*;
-import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.CompassMeta;
@@ -15,7 +13,7 @@ import java.util.*;
 
 /**
  * カスタムコンパス管理
- *  - SHOP    コンパス: 最寄りショップを指す（economy ワールド）
+ *  - SHOP    コンパス: 設定した固定ショップ座標を指す
  *  - WANTED  コンパス: 最寄り指名手配プレイヤーを指す（overworld）
  */
 public class CompassManager {
@@ -28,31 +26,44 @@ public class CompassManager {
     private final WantedManager wantedManager;
     private final WorldManager worldManager;
 
-    /** config から読んだショップ座標: key=name, value=Location */
-    private final Map<String, Location> shopLocations = new LinkedHashMap<>();
+    /** ショップコンパスが指す固定座標 */
+    private Location shopTarget = null;
 
     public CompassManager(JavaPlugin plugin, WantedManager wantedManager,
                           WorldManager worldManager) {
-        this.plugin        = plugin;
-        this.wantedManager = wantedManager;
-        this.worldManager  = worldManager;
+        this.plugin         = plugin;
+        this.wantedManager  = wantedManager;
+        this.worldManager   = worldManager;
         this.compassTypeKey = new NamespacedKey(plugin, "compass_type");
-        loadShops();
+        loadShopTarget();
     }
 
-    private void loadShops() {
-        shopLocations.clear();
-        String worldName = plugin.getConfig().getString("shop-world", "economy");
+    // ─── ショップターゲット読み込み / 保存 ───────────────────────
+
+    private void loadShopTarget() {
+        String worldName = plugin.getConfig().getString("compass-shop-world", "");
+        if (worldName.isEmpty()) { shopTarget = null; return; }
         World world = Bukkit.getWorld(worldName);
-        ConfigurationSection sec = plugin.getConfig().getConfigurationSection("shops");
-        if (sec == null || world == null) return;
-        for (String key : sec.getKeys(false)) {
-            double x = sec.getDouble(key + ".x");
-            double y = sec.getDouble(key + ".y");
-            double z = sec.getDouble(key + ".z");
-            shopLocations.put(key, new Location(world, x + 0.5, y, z + 0.5));
-        }
+        if (world == null) { shopTarget = null; return; }
+        double x = plugin.getConfig().getDouble("compass-shop-x", 0);
+        double y = plugin.getConfig().getDouble("compass-shop-y", 64);
+        double z = plugin.getConfig().getDouble("compass-shop-z", 0);
+        shopTarget = new Location(world, x, y, z);
     }
+
+    /**
+     * ショップコンパスのターゲット座標を更新し config.yml に永続保存する
+     */
+    public void setShopTarget(Location loc) {
+        this.shopTarget = loc.clone();
+        plugin.getConfig().set("compass-shop-world", loc.getWorld().getName());
+        plugin.getConfig().set("compass-shop-x", loc.getX());
+        plugin.getConfig().set("compass-shop-y", loc.getY());
+        plugin.getConfig().set("compass-shop-z", loc.getZ());
+        plugin.saveConfig();
+    }
+
+    public Location getShopTarget() { return shopTarget; }
 
     // ─── アイテム生成 ────────────────────────────────────────────
 
@@ -61,7 +72,7 @@ public class CompassManager {
         ItemMeta meta = item.getItemMeta();
         meta.setDisplayName(ChatColor.AQUA + "" + ChatColor.BOLD + "ショップコンパス");
         meta.setLore(List.of(
-            ChatColor.GRAY + "最寄りのショップを指し示す",
+            ChatColor.GRAY + "ショップ方向を指し示す",
             ChatColor.GRAY + "economy ワールドで使用"
         ));
         meta.getPersistentDataContainer().set(compassTypeKey, PersistentDataType.STRING, TYPE_SHOP);
@@ -118,22 +129,10 @@ public class CompassManager {
     // ─── ショップコンパス更新 ─────────────────────────────────────
 
     private void updateShopCompass(Player player) {
-        if (shopLocations.isEmpty()) return;
-
-        Location nearest = null;
-        double minDist = Double.MAX_VALUE;
-        Location pLoc = player.getLocation();
-
-        for (Location loc : shopLocations.values()) {
-            // 同ワールドのみ対象
-            if (!Objects.equals(loc.getWorld(), player.getWorld())) continue;
-            double d = pLoc.distanceSquared(loc);
-            if (d < minDist) { minDist = d; nearest = loc; }
-        }
-
-        if (nearest != null) {
-            player.setCompassTarget(nearest);
-        }
+        if (shopTarget == null) return;
+        // 同ワールドのみ対象
+        if (!Objects.equals(shopTarget.getWorld(), player.getWorld())) return;
+        player.setCompassTarget(shopTarget);
     }
 
     // ─── 賞金首コンパス更新 ──────────────────────────────────────

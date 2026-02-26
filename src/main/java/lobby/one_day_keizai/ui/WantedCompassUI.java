@@ -99,6 +99,10 @@ public class WantedCompassUI implements Listener {
         }
 
         viewer.closeInventory();
+
+        // 賞金首コンパスを消費（PDCで識別して1個削除）
+        consumeWantedCompass(viewer);
+
         teleportToTarget(viewer, target);
     }
 
@@ -110,6 +114,23 @@ public class WantedCompassUI implements Listener {
     }
 
     // ─── TP + エフェクト ─────────────────────────────────────────
+
+    /** PDCで賞金首コンパスを識別してインベントリから1個削除 */
+    private void consumeWantedCompass(Player viewer) {
+        org.bukkit.NamespacedKey key = new org.bukkit.NamespacedKey(plugin, "compass_type");
+        for (int i = 0; i < viewer.getInventory().getSize(); i++) {
+            ItemStack item = viewer.getInventory().getItem(i);
+            if (item == null || item.getType() != Material.COMPASS) continue;
+            org.bukkit.inventory.meta.ItemMeta meta = item.getItemMeta();
+            if (meta == null) continue;
+            String type = meta.getPersistentDataContainer()
+                    .get(key, org.bukkit.persistence.PersistentDataType.STRING);
+            if ("wanted".equals(type)) {
+                item.setAmount(item.getAmount() - 1);
+                return;
+            }
+        }
+    }
 
     private void teleportToTarget(Player viewer, Player target) {
         Location targetLoc = target.getLocation();

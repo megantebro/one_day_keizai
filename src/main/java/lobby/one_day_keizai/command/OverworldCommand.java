@@ -4,11 +4,11 @@ import lobby.one_day_keizai.manager.WantedManager;
 import lobby.one_day_keizai.manager.WorldManager;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
-import org.bukkit.command.BlockCommandSender;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 
 import java.util.ArrayList;
@@ -38,12 +38,12 @@ public class OverworldCommand implements CommandExecutor, TabCompleter {
         if (sender instanceof Player p) {
             player = p;
         } else {
-            // コマンドブロック or コンソール → プレイヤー名が必要
+            // コマンドブロック or コンソール → プレイヤー名 or セレクターが必要
             if (args.length < 2) {
-                sender.sendMessage("コマンドブロックからの使い方: /ow enter <player> | /ow return <player>");
+                sender.sendMessage("コマンドブロックからの使い方: /ow enter <player/@p> | /ow return <player/@p>");
                 return true;
             }
-            player = Bukkit.getPlayer(args[1]);
+            player = resolvePlayer(sender, args[1]);
             if (player == null) {
                 sender.sendMessage("プレイヤーが見つかりません: " + args[1]);
                 return true;
@@ -77,6 +77,19 @@ public class OverworldCommand implements CommandExecutor, TabCompleter {
         }
 
         return true;
+    }
+
+    /** @p などのセレクターまたはプレイヤー名を解決して Player を返す */
+    private Player resolvePlayer(CommandSender sender, String nameOrSelector) {
+        if (nameOrSelector.startsWith("@")) {
+            try {
+                for (Entity e : Bukkit.selectEntities(sender, nameOrSelector)) {
+                    if (e instanceof Player p) return p;
+                }
+                return null;
+            } catch (IllegalArgumentException ignored) {}
+        }
+        return Bukkit.getPlayer(nameOrSelector);
     }
 
     private void sendUsage(Player player) {

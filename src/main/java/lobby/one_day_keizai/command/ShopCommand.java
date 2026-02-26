@@ -11,6 +11,7 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -68,14 +69,14 @@ public class ShopCommand implements CommandExecutor, TabCompleter {
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
 
         // ===== コマンドブロック / コンソールからの呼び出し =====
-        // /shop <player>           → プレイヤーを職業ショップへTP
-        // /shop <player> <shopKey> → プレイヤーを指定ショップへTP
+        // /shop <player/@p>           → プレイヤーを職業ショップへTP
+        // /shop <player/@p> <shopKey> → プレイヤーを指定ショップへTP
         if (!(sender instanceof Player)) {
             if (args.length == 0) {
                 sender.sendMessage("使い方: /shop <player> [shopKey]");
                 return true;
             }
-            Player target = Bukkit.getPlayer(args[0]);
+            Player target = resolvePlayer(sender, args[0]);
             if (target == null) {
                 sender.sendMessage("プレイヤーが見つかりません: " + args[0]);
                 return true;
@@ -123,6 +124,21 @@ public class ShopCommand implements CommandExecutor, TabCompleter {
         }
 
         teleportTo(player, shopKey);
+    }
+
+    /** @p などのセレクターまたはプレイヤー名を解決して Player を返す */
+    private Player resolvePlayer(CommandSender sender, String nameOrSelector) {
+        // セレクター（@p, @a, @r 等）を試みる
+        if (nameOrSelector.startsWith("@")) {
+            try {
+                List<org.bukkit.entity.Entity> entities = Bukkit.selectEntities(sender, nameOrSelector);
+                for (org.bukkit.entity.Entity e : entities) {
+                    if (e instanceof Player p) return p;
+                }
+                return null;
+            } catch (IllegalArgumentException ignored) {}
+        }
+        return Bukkit.getPlayer(nameOrSelector);
     }
 
     private void teleportTo(Player player, String key) {

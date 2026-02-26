@@ -25,6 +25,9 @@ commands:
   shop:
     description: 自分の職業ショップへワープ。listで一覧
     usage: /shop [list|merchant|farmer|blacksmith]
+  compass:
+    description: カスタムコンパスを入手
+    usage: /compass <shop|wanted>
 
 permissions:
   one_day_keizai.ow:

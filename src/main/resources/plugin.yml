@@ -28,6 +28,9 @@ commands:
   compass:
     description: カスタムコンパスを入手
     usage: /compass <shop|wanted>
+  wanted:
+    description: 指名手配管理（OP専用）
+    usage: /wanted <set|clear|list>
   farm:
     description: 農家スキル管理
     usage: /farm autoplant

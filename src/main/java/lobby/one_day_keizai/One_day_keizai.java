@@ -131,6 +131,7 @@ public final class One_day_keizai extends JavaPlugin {
         WantedCompassUI wantedCompassUI = new WantedCompassUI(wantedManager, this);
         Bukkit.getPluginManager().registerEvents(wantedCompassUI, this);
         Bukkit.getPluginManager().registerEvents(new CompassListener(compassManager, jobManager, wantedCompassUI), this);
+        Bukkit.getPluginManager().registerEvents(new LavaFlowListener(), this);
 
         // 農家専用レシピ: 小麦俵 x1 → エンチャント瓶 x2
         NamespacedKey farmerHayRecipeKey = new NamespacedKey(this, "farmer_hay_to_xpbottle");

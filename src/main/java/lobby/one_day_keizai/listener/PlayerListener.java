@@ -43,14 +43,13 @@ public class PlayerListener implements Listener {
         this.plugin = plugin;
     }
 
-    /** ショップコンパスを持っていない場合にgiveする */
+    /** コンパスを持っていない場合に普通のコンパスをgiveする */
     private void giveCompassIfMissing(Player player) {
         for (ItemStack item : player.getInventory().getContents()) {
-            if (item == null || item.getType() != Material.COMPASS) continue;
-            if (CompassManager.TYPE_SHOP.equals(compassManager.getCompassType(item))) return;
+            if (item != null && item.getType() == Material.COMPASS) return;
         }
-        player.getInventory().addItem(compassManager.createShopCompass());
-        player.sendMessage(ChatColor.AQUA + "ショップコンパスを受け取りました！");
+        player.getInventory().addItem(new ItemStack(Material.COMPASS));
+        player.sendMessage(ChatColor.AQUA + "コンパスを受け取りました！");
     }
 
     @EventHandler(priority = EventPriority.NORMAL)

@@ -36,6 +36,7 @@ class JobSelectionListenerTest {
     void setUp() {
         listener = new JobSelectionListener(jobManager, nametagManager);
         lenient().when(player.getUniqueId()).thenReturn(playerId);
+        lenient().when(jobManager.getJob(playerId)).thenReturn(Job.NONE);
     }
 
     private InventoryClickEvent makeClickEvent(int rawSlot) {

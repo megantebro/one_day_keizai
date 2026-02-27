@@ -58,6 +58,8 @@ class PvPListenerTest {
         lenient().when(worldManager.isSafeWorld(overworldMock)).thenReturn(false);
         lenient().when(worldManager.isInOverworld(victim)).thenReturn(false);
         lenient().when(wantedManager.isWanted(any())).thenReturn(false);
+        // デフォルト: innocent kill（先に殴った側がkillerのため手配される）
+        lenient().when(combatManager.isInnocentKill(any(), any())).thenReturn(true);
         lenient().when(logoutManager.isCombatLogoutDeath(any())).thenReturn(false);
         lenient().when(playerDataManager.getOverworldDeposit(any())).thenReturn(0.0);
     }

@@ -162,7 +162,9 @@ public class PvPListener implements Listener {
         }
 
         // 指名手配中のプレイヤーを倒した場合は手配されない（正当防衛）
-        if (inOverworld && !victimWasWanted) {
+        // 先に殴られてやり返した場合も手配されない（正当防衛）
+        boolean selfDefense = !combatManager.isInnocentKill(killerId, victimId);
+        if (inOverworld && !victimWasWanted && !selfDefense) {
             double bounty = playerDataManager.getOverworldDeposit(killerId);
             double currentBounty = wantedManager.isWanted(killerId)
                     ? wantedManager.getBounty(killerId) : bounty;

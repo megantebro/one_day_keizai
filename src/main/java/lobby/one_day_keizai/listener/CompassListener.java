@@ -12,6 +12,10 @@ import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
+
 /**
  * コンパスの右クリック処理。
  *  - メインハンドでのみ動作
@@ -20,6 +24,10 @@ import org.bukkit.inventory.ItemStack;
  *  - バニラ/WEコンパス: キャンセル
  */
 public class CompassListener implements Listener {
+
+    /** RIGHT_CLICK_BLOCK + RIGHT_CLICK_AIR 二重発火防止クールダウン (ms) */
+    private static final long CLICK_COOLDOWN_MS = 300L;
+    private final Map<UUID, Long> lastClickTime = new HashMap<>();
 
     private final CompassManager compassManager;
     private final JobManager     jobManager;
@@ -44,6 +52,13 @@ public class CompassListener implements Listener {
         boolean isRightClick = event.getAction() == Action.RIGHT_CLICK_AIR
                             || event.getAction() == Action.RIGHT_CLICK_BLOCK;
         if (!isRightClick) return;
+
+        // RIGHT_CLICK_BLOCK と RIGHT_CLICK_AIR が同一クリックで二重発火するのを防ぐ
+        UUID playerId = event.getPlayer().getUniqueId();
+        long now = System.currentTimeMillis();
+        Long last = lastClickTime.get(playerId);
+        if (last != null && now - last < CLICK_COOLDOWN_MS) return;
+        lastClickTime.put(playerId, now);
 
         String type = compassManager.getCompassType(held);
 

@@ -33,6 +33,7 @@ public class ShopCommand implements CommandExecutor, TabCompleter {
     /** 職業 → ショップキー のマッピング */
     private static final Map<Job, String> JOB_SHOP_MAP = Map.of(
         Job.FARMER,           "farmer",
+        Job.CAPITALIST,       "farmer",       // 上級農家
         Job.BLACKSMITH,       "blacksmith",
         Job.ENCHANTER,        "blacksmith",   // 上級鍛冶屋
         Job.MERCHANT,         "merchant",

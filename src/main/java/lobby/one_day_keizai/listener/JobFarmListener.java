@@ -53,6 +53,22 @@ public class JobFarmListener implements Listener {
         Material.NETHER_WART
     );
 
+    /** 農家以外が収穫（破壊）できない作物ブロック一覧 */
+    private static final Set<Material> HARVEST_ONLY_FARMER = EnumSet.of(
+        Material.WHEAT,
+        Material.CARROTS,
+        Material.POTATOES,
+        Material.BEETROOTS,
+        Material.SWEET_BERRY_BUSH,
+        Material.NETHER_WART,
+        Material.COCOA,
+        Material.SUGAR_CANE,
+        Material.BAMBOO,
+        Material.CACTUS,
+        Material.MELON,
+        Material.PUMPKIN
+    );
+
     public JobFarmListener(JobManager jobManager, String safeWorldName, JavaPlugin plugin) {
         this.jobManager    = jobManager;
         this.safeWorldName = safeWorldName;
@@ -87,6 +103,22 @@ public class JobFarmListener implements Listener {
         if (!jobManager.isFarmer(player.getUniqueId())) {
             event.setCancelled(true);
             player.sendMessage(ChatColor.RED + "骨粉の使用は農家のみ可能です。");
+        }
+    }
+
+    // ─── 農家以外の収穫禁止 ───────────────────────────────────────
+
+    @EventHandler(priority = EventPriority.HIGH)
+    public void onCropHarvest(BlockBreakEvent event) {
+        Block block = event.getBlock();
+        if (!HARVEST_ONLY_FARMER.contains(block.getType())) return;
+
+        Player player = event.getPlayer();
+        if (player.isOp()) return;
+
+        if (!jobManager.isFarmer(player.getUniqueId())) {
+            event.setCancelled(true);
+            player.sendMessage(ChatColor.RED + "農作物の収穫は農家のみ可能です。");
         }
     }
 

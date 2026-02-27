@@ -34,6 +34,9 @@ commands:
   farm:
     description: 農家スキル管理
     usage: /farm autoplant
+  dirtrod:
+    description: 無限の土の棒を渡す（OP専用）
+    usage: /dirtrod [player]
 
 permissions:
   one_day_keizai.ow:

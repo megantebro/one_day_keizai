@@ -132,6 +132,9 @@ public final class One_day_keizai extends JavaPlugin {
         Bukkit.getPluginManager().registerEvents(wantedCompassUI, this);
         Bukkit.getPluginManager().registerEvents(new CompassListener(compassManager, jobManager, wantedCompassUI), this);
         Bukkit.getPluginManager().registerEvents(new LavaFlowListener(), this);
+        InfiniteDirtListener infiniteDirtListener = new InfiniteDirtListener(this);
+        Bukkit.getPluginManager().registerEvents(infiniteDirtListener, this);
+        getCommand("dirtrod").setExecutor(infiniteDirtListener);
 
         // 農家専用レシピ: 小麦俵 x1 → エンチャント瓶 x2
         NamespacedKey farmerHayRecipeKey = new NamespacedKey(this, "farmer_hay_to_xpbottle");

@@ -9,6 +9,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
@@ -111,6 +112,26 @@ public class DonkeyChestListener implements Listener {
     public void onPlayerQuit(PlayerQuitEvent event) {
         // InventoryCloseEvent が先に発火するが念のためクリーンアップ
         openingDonkeys.remove(event.getPlayer().getUniqueId());
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // ロバ死亡時: 拡張インベントリのアイテムをドロップ
+    // ─────────────────────────────────────────────────────────────────────────
+
+    @EventHandler
+    public void onDonkeyDeath(EntityDeathEvent event) {
+        if (!(event.getEntity() instanceof ChestedHorse horse)) return;
+        if (!horse.isCarryingChest()) return;
+
+        ItemStack[] items = loadItems(horse);
+        for (ItemStack item : items) {
+            if (item != null && item.getType() != org.bukkit.Material.AIR) {
+                horse.getWorld().dropItemNaturally(horse.getLocation(), item);
+            }
+        }
+
+        // PDCデータを削除
+        horse.getPersistentDataContainer().remove(pdcKey);
     }
 
     // ─────────────────────────────────────────────────────────────────────────

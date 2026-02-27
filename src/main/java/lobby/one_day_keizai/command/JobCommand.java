@@ -88,13 +88,7 @@ public class JobCommand implements CommandExecutor, TabCompleter {
             return;
         }
 
-        // 上級職から基本職への変更は不可
-        if (current.isUpperTier()) {
-            player.sendMessage(ChatColor.RED + "上級職から基本職への変更はできません。");
-            return;
-        }
-
-        // すでに職業を持っている場合、ネザースターが必要
+        // すでに職業を持っている場合（上級職含む）、ネザースターが必要
         if (current != Job.NONE) {
             if (!consumeNetherStar(player)) {
                 player.sendMessage(ChatColor.RED + "職業を変更するには " +

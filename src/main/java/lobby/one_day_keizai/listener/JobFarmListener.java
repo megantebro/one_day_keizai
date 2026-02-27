@@ -106,12 +106,16 @@ public class JobFarmListener implements Listener {
         }
     }
 
-    // ─── 農家以外の収穫禁止 ───────────────────────────────────────
+    // ─── 農家以外の収穫禁止（安全ワールドのみ）──────────────────
 
     @EventHandler(priority = EventPriority.HIGH)
     public void onCropHarvest(BlockBreakEvent event) {
         Block block = event.getBlock();
         if (!HARVEST_ONLY_FARMER.contains(block.getType())) return;
+
+        // 安全ワールド（空島）のみ制限。オーバーワールドは自由
+        if (block.getWorld() == null) return;
+        if (!block.getWorld().getName().equals(safeWorldName)) return;
 
         Player player = event.getPlayer();
         if (player.isOp()) return;

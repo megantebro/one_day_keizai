@@ -61,16 +61,16 @@ shop-world: "economy"
 shops:
   merchant:
     display: "商人ショップ"
-    x: -429
-    y: 101
-    z: -442
+    x: -460
+    y: 110
+    z: -471
   farmer:
     display: "農家ショップ"
-    x: -435
-    y: 101
-    z: -442
+    x: -466
+    y: 110
+    z: -471
   blacksmith:
     display: "鍛冶屋ショップ"
-    x: -442
-    y: 101
-    z: -442
+    x: -472
+    y: 110
+    z: -471

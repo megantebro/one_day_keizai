@@ -104,14 +104,13 @@ class JobTest {
         assertEquals(Job.ENCHANTER, Job.BLACKSMITH.getUpperJob());
         // 農家 → 資本家
         assertEquals(Job.CAPITALIST, Job.FARMER.getUpperJob());
-        // 商人 → 富裕商人は未設定（null）
-        assertNull(Job.MERCHANT.getUpperJob());
+        // 商人 → 豪商
+        assertEquals(Job.WEALTHY_MERCHANT, Job.MERCHANT.getUpperJob());
     }
 
     @Test
     void getUpperJob_nonPromotableJobsReturnNull() {
         assertNull(Job.NONE.getUpperJob());
-        assertNull(Job.MERCHANT.getUpperJob());
         assertNull(Job.CAPITALIST.getUpperJob());
         assertNull(Job.ENCHANTER.getUpperJob());
         assertNull(Job.WEALTHY_MERCHANT.getUpperJob());

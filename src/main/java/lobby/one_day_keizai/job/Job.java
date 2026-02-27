@@ -51,6 +51,7 @@ public enum Job {
         return switch (this) {
             case BLACKSMITH -> ENCHANTER;
             case FARMER     -> CAPITALIST;
+            case MERCHANT   -> WEALTHY_MERCHANT;
             default         -> null;
         };
     }

@@ -93,6 +93,12 @@ public class ShopCommand implements CommandExecutor, TabCompleter {
         // ===== プレイヤーからの呼び出し =====
         Player player = (Player) sender;
 
+        // OP以外のプレイヤーは使用不可
+        if (!player.isOp()) {
+            player.sendMessage(org.bukkit.ChatColor.RED + "このコマンドは使用できません。");
+            return true;
+        }
+
         // /shop list
         if (args.length > 0 && args[0].equalsIgnoreCase("list")) {
             showList(player);

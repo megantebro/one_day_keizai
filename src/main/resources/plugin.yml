@@ -23,8 +23,10 @@ commands:
     description: 株・投資システム (資本家限定)
     usage: /stock <info|buy|sell|offer|accept|reject>
   shop:
-    description: 自分の職業ショップへワープ。listで一覧
-    usage: /shop [list|merchant|farmer|blacksmith]
+    description: 職業ショップへワープ（OP・コマンドブロック専用）
+    usage: /shop <player> [shopKey]
+    permission: one_day_keizai.shop
+    permission-message: このコマンドは使用できません。
   compass:
     description: カスタムコンパスを入手
     usage: /compass <shop|wanted>
@@ -39,6 +41,9 @@ commands:
     usage: /dirtrod [player]
 
 permissions:
+  one_day_keizai.shop:
+    description: /shop コマンドの使用権限（OP・コマンドブロック専用）
+    default: op
   one_day_keizai.ow:
     description: /ow コマンドの使用権限
     default: op

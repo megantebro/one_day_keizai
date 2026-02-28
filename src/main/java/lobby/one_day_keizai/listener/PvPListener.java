@@ -173,10 +173,14 @@ public class PvPListener implements Listener {
         // 先に殴られてやり返した場合も手配されない（正当防衛）
         boolean selfDefense = !combatManager.isInnocentKill(killerId, victimId);
         if (inOverworld && !victimWasWanted && !selfDefense) {
-            double bounty = playerDataManager.getOverworldDeposit(killerId);
-            double currentBounty = wantedManager.isWanted(killerId)
-                    ? wantedManager.getBounty(killerId) : bounty;
-            wantedManager.makeWanted(killer, currentBounty);
+            // 懸賞金 = 被害者から奪ったデポジット額（複数キルで積み上がる）
+            double stolen = victimDeposit;
+            double newBounty = wantedManager.isWanted(killerId)
+                    ? wantedManager.getBounty(killerId) + stolen
+                    : stolen;
+            if (newBounty > 0) {
+                wantedManager.makeWanted(killer, newBounty);
+            }
         }
 
         combatManager.clearCombatData(victimId, killerId);

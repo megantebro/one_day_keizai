@@ -95,6 +95,14 @@ public class PvPListener implements Listener {
         Player victim = event.getEntity();
         UUID victimId = victim.getUniqueId();
 
+        // 死亡座標をそのプレイヤーのチャットに表示
+        org.bukkit.Location deathLoc = victim.getLocation();
+        victim.sendMessage(ChatColor.GRAY + "☠ 死亡地点: " +
+                ChatColor.WHITE + deathLoc.getWorld().getName() +
+                ChatColor.GRAY + " X:" + ChatColor.RED + deathLoc.getBlockX() +
+                ChatColor.GRAY + " Y:" + ChatColor.RED + deathLoc.getBlockY() +
+                ChatColor.GRAY + " Z:" + ChatColor.RED + deathLoc.getBlockZ());
+
         boolean inOverworld = worldManager.isInOverworld(victim);
 
         // --- アイテムドロップ判定 ---

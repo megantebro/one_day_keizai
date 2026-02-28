@@ -90,8 +90,9 @@ public class WorldManager {
 
         player.teleport(tpLoc);
 
-        // 低速落下（5秒）
-        player.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_FALLING, 100, 0, false, true, true));
+        // 低速落下（8秒）・耐性III（20秒）
+        player.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_FALLING, 160, 0, false, true, true));
+        player.addPotionEffect(new PotionEffect(PotionEffectType.DAMAGE_RESISTANCE, 400, 2, false, true, true));
 
         player.sendMessage(ChatColor.GREEN + "オーバーワールドに入場しました！上空から降下中……");
         if (entryFee > 0) {

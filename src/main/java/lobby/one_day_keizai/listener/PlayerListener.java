@@ -107,6 +107,16 @@ public class PlayerListener implements Listener {
             }
         }
 
+        // リスポーン地点が危険ワールド（PvPワールド）に設定されている場合、
+        // 以前ベッドで設定したスポーン地点を無視して初期スポーン地点へ誘導する
+        org.bukkit.Location rl = event.getRespawnLocation();
+        if (rl != null && rl.getWorld() != null && !worldManager.isSafeWorld(rl.getWorld())) {
+            World safeWorld = Bukkit.getWorld(worldManager.getSafeWorldName());
+            if (safeWorld != null) {
+                event.setRespawnLocation(safeWorld.getSpawnLocation());
+            }
+        }
+
         // リスポーン後にコンパス未所持なら配布（ツール返却処理の後に実行）
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             if (player.isOnline()) giveCompassIfMissing(player);

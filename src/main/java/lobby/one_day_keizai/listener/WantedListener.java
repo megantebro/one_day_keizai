@@ -7,12 +7,14 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import com.destroystokyo.paper.event.player.PlayerSetSpawnEvent;
 import org.bukkit.event.player.PlayerBedEnterEvent;
 import org.bukkit.event.player.PlayerChangedWorldEvent;
 
 /**
  * 指名手配システム補助リスナー。
  * - オーバーワールドでのベッド使用を禁止
+ * - オーバーワールドでのリス地変更を禁止
  * - 安全ワールドに入った時に未払い懸賞金を自動入金
  */
 public class WantedListener implements Listener {
@@ -34,6 +36,18 @@ public class WantedListener implements Listener {
         if (!worldManager.isSafeWorld(player.getWorld())) {
             event.setCancelled(true);
             player.sendMessage(ChatColor.RED + "このワールドではベッドを使用できません。");
+        }
+    }
+
+    /**
+     * オーバーワールドでのリス地変更をキャンセル（ベッド・コマンド両方ブロック）。
+     */
+    @EventHandler(priority = EventPriority.HIGH)
+    public void onSetSpawn(PlayerSetSpawnEvent event) {
+        Player player = event.getPlayer();
+        if (!worldManager.isSafeWorld(player.getWorld())) {
+            event.setCancelled(true);
+            player.sendMessage(ChatColor.RED + "このワールドではリス地を設定できません。");
         }
     }
 

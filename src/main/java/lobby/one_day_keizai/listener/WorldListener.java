@@ -4,6 +4,7 @@ import org.bukkit.ChatColor;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Monster;
+import org.bukkit.entity.Phantom;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -62,6 +63,19 @@ public class WorldListener implements Listener {
 
         // 敵対モブ（Monsterサブクラス）のみキャンセル
         if (event.getEntity() instanceof Monster) {
+            event.setCancelled(true);
+        }
+    }
+
+    /**
+     * 全ワールドでファントムの自然スポーンを禁止する。
+     */
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onPhantomSpawn(CreatureSpawnEvent event) {
+        if (!(event.getEntity() instanceof Phantom)) return;
+        CreatureSpawnEvent.SpawnReason reason = event.getSpawnReason();
+        if (reason == CreatureSpawnEvent.SpawnReason.NATURAL
+                || reason == CreatureSpawnEvent.SpawnReason.DEFAULT) {
             event.setCancelled(true);
         }
     }

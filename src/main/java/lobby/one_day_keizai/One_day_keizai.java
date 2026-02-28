@@ -188,6 +188,11 @@ public final class One_day_keizai extends JavaPlugin {
         // 定期自動保存（5分ごと）
         Bukkit.getScheduler().runTaskTimer(this, () -> playerDataManager.save(), 20L * 300, 20L * 300);
 
+        // ゲームルール設定（全ワールド）
+        for (org.bukkit.World w : Bukkit.getWorlds()) {
+            w.setGameRule(org.bukkit.GameRule.DO_INSOMNIA, false); // ファントムスポーン無効
+        }
+
         getLogger().info("One Day Keizai プラグインが有効化されました。");
     }
 

@@ -43,8 +43,11 @@ public class PlayerListener implements Listener {
         this.plugin = plugin;
     }
 
-    /** コンパスを持っていない場合に普通のコンパスをgiveする */
+    /** PvPワールドにいるときのみコンパスを配布する（安全ワールドでは配布しない） */
     private void giveCompassIfMissing(Player player) {
+        // economyワールド（安全地帯）ではコンパスが回転するので配布しない
+        if (worldManager.isSafeWorld(player.getWorld())) return;
+
         for (ItemStack item : player.getInventory().getContents()) {
             if (item != null && item.getType() == Material.COMPASS) return;
         }

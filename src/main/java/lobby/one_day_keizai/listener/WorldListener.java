@@ -4,9 +4,11 @@ import org.bukkit.ChatColor;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Monster;
+import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.player.PlayerPortalEvent;
 
@@ -61,6 +63,20 @@ public class WorldListener implements Listener {
         // 敵対モブ（Monsterサブクラス）のみキャンセル
         if (event.getEntity() instanceof Monster) {
             event.setCancelled(true);
+        }
+    }
+
+    /**
+     * 経済ワールド（economy）では感圧板の設置を禁止する。
+     */
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onPressurePlaceEconomy(BlockPlaceEvent event) {
+        if (!ECONOMY_WORLD.equals(event.getBlock().getWorld().getName())) return;
+        if (!event.getBlock().getType().name().contains("PRESSURE_PLATE")) return;
+
+        event.setCancelled(true);
+        if (event.getPlayer() != null) {
+            event.getPlayer().sendMessage(ChatColor.RED + "経済ワールドでは感圧板を設置できません。");
         }
     }
 }

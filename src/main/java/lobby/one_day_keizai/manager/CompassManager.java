@@ -274,7 +274,13 @@ public class CompassManager {
             if (d < minDist) { minDist = d; nearest = target.getLocation().clone(); }
         }
 
-        if (nearest == null) return; // 同ワールドに賞金首がいない → 変更しない
+        if (nearest == null) {
+            // 同ワールドに賞金首がいない → スポーン地点を指すようにリセット
+            // （別ワールドのロードストーン座標が残ると針が回転するため）
+            Location spawn = player.getWorld().getSpawnLocation();
+            applyLodestoneToAll(player, TYPE_WANTED, spawn);
+            return;
+        }
         applyLodestoneToAll(player, TYPE_WANTED, nearest);
     }
 }

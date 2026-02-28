@@ -155,6 +155,12 @@ public class CompassManager {
             return false;
         }
 
+        // ─ 指名手配チェック ─
+        if (wantedManager.isWanted(player.getUniqueId())) {
+            player.sendMessage(ChatColor.RED + "指名手配中はショップに入れません！");
+            return false;
+        }
+
         // ─ 職業チェック ─
         Job job = jobManager.getJob(player.getUniqueId());
         List<String> allowedNames = plugin.getConfig().getStringList("compass-shop-allowed-jobs");

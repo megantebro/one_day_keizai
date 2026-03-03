@@ -206,4 +206,28 @@ public class WantedManager {
             }
         }.runTaskTimer(plugin, 100L, 100L); // 5秒ごと
     }
+
+    /**
+     * 指名手配中プレイヤーが地下（Y &lt; 0）にいるとダメージを与えるタスク。
+     * 毎秒チェック。PvPワールド限定。
+     *
+     * @param pvpWorldName 対象のPvPワールド名
+     */
+    public void startUndergroundDamageTask(String pvpWorldName) {
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                for (Player player : Bukkit.getOnlinePlayers()) {
+                    if (!wantedPlayers.containsKey(player.getUniqueId())) continue;
+                    if (player.getWorld() == null) continue;
+                    if (!player.getWorld().getName().equals(pvpWorldName)) continue;
+                    if (player.getLocation().getY() >= 0) continue;
+
+                    // Y=0未満で毎秒1ダメージ（半ハート）
+                    player.damage(1.0);
+                    player.sendMessage(ChatColor.RED + "⚠ 指名手配中は地下に隠れられません！");
+                }
+            }
+        }.runTaskTimer(plugin, 20L, 20L); // 1秒ごと
+    }
 }

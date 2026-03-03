@@ -266,8 +266,12 @@ public class CompassManager {
     // ─── 賞金首コンパス更新（ロードストーン書き換え）────────────
 
     private void updateWantedCompass(Player player) {
+        // メインハンドに賞金首コンパスを持っているかチェック（アクションバー表示用）
+        boolean inMainHand = TYPE_WANTED.equals(getCompassType(player.getInventory().getItemInMainHand()));
+
         Location nearest = null;
-        double minDist = Double.MAX_VALUE;
+        Player nearestTarget = null;
+        double minDistSq = Double.MAX_VALUE;
         Location pLoc = player.getLocation();
 
         for (Player target : Bukkit.getOnlinePlayers()) {
@@ -277,16 +281,36 @@ public class CompassManager {
                     || !target.getWorld().getName().equals(player.getWorld().getName())) continue;
 
             double d = pLoc.distanceSquared(target.getLocation());
-            if (d < minDist) { minDist = d; nearest = target.getLocation().clone(); }
+            if (d < minDistSq) {
+                minDistSq = d;
+                nearest = target.getLocation().clone();
+                nearestTarget = target;
+            }
         }
 
         if (nearest == null) {
             // 同ワールドに賞金首がいない → スポーン地点を指すようにリセット
-            // （別ワールドのロードストーン座標が残ると針が回転するため）
             Location spawn = player.getWorld().getSpawnLocation();
             applyLodestoneToAll(player, TYPE_WANTED, spawn);
             return;
         }
         applyLodestoneToAll(player, TYPE_WANTED, nearest);
+
+        // メインハンドに持っている時のみ、アクションバーにY座標を表示
+        if (inMainHand && nearestTarget != null) {
+            int targetY = nearest.getBlockY();
+            // 水平距離（Y成分を除く）
+            double dx = nearest.getX() - pLoc.getX();
+            double dz = nearest.getZ() - pLoc.getZ();
+            int horizDist = (int) Math.sqrt(dx * dx + dz * dz);
+
+            String yStr = (targetY < 0)
+                    ? ChatColor.DARK_RED + "" + targetY + " (地下！)"
+                    : ChatColor.WHITE + "" + targetY;
+
+            player.sendActionBar(ChatColor.RED + "🎯 " + nearestTarget.getName()
+                    + ChatColor.GRAY + "  ｜  Y: " + yStr
+                    + ChatColor.GRAY + "  ｜  水平距離: " + ChatColor.YELLOW + horizDist + "m");
+        }
     }
 }

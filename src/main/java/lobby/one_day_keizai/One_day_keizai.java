@@ -123,6 +123,7 @@ public final class One_day_keizai extends JavaPlugin {
         CompassManager compassManager = new CompassManager(this, wantedManager, worldManager);
         compassManager.startUpdateTask();
         wantedManager.startSyncTask(); // ネームタグ状態を定期同期（フェイルセーフ）
+        wantedManager.startUndergroundDamageTask(overworldName); // 地下逃げ込み対策
 
         // リスナー登録
         Bukkit.getPluginManager().registerEvents(

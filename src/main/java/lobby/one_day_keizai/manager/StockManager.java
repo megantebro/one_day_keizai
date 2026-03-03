@@ -229,8 +229,10 @@ public class StockManager {
 
         // 売り手の保有確認
         int sellerHeld = stockData.getHoldings(fromUuid);
-        if (sellerHeld < offer.amount)
-            return "売り手の保有数が不足しています。オファーをキャンセルしました。";
+        if (sellerHeld < offer.amount) {
+            stockData.removeOffer(offer.id); // 実際にオファーを削除
+            return "売り手の保有数が不足しているためオファーをキャンセルしました。";
+        }
 
         double total = offer.price * offer.amount;
         double fee   = total * sellFee;
@@ -367,6 +369,6 @@ public class StockManager {
     }
 
     public static String fmt(double v) {
-        return NumberFormat.getNumberInstance(Locale.JAPAN).format((long) v);
+        return NumberFormat.getNumberInstance(Locale.JAPAN).format(Math.round(v));
     }
 }

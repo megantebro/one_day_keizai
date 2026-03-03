@@ -3,6 +3,7 @@ package lobby.one_day_keizai.listener;
 import lobby.one_day_keizai.data.PlayerDataManager;
 import lobby.one_day_keizai.manager.*;
 import net.milkbowl.vault.economy.Economy;
+import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.entity.Entity;
@@ -38,6 +39,8 @@ class PvPListenerTest {
 
     @Mock private Player victim;
     @Mock private Player killer;
+    @Mock private Location deathLocation;
+    @Mock private World deathWorld;
 
     private PvPListener pvpListener;
 
@@ -55,6 +58,10 @@ class PvPListenerTest {
         lenient().when(victim.getName()).thenReturn("Victim");
         lenient().when(killer.getName()).thenReturn("Killer");
         lenient().when(victim.getWorld()).thenReturn(overworldMock);
+        // 死亡座標メッセージのために必要
+        lenient().when(victim.getLocation()).thenReturn(deathLocation);
+        lenient().when(deathLocation.getWorld()).thenReturn(deathWorld);
+        lenient().when(deathWorld.getName()).thenReturn("world");
         lenient().when(worldManager.isSafeWorld(overworldMock)).thenReturn(false);
         lenient().when(worldManager.isInOverworld(victim)).thenReturn(false);
         lenient().when(wantedManager.isWanted(any())).thenReturn(false);
@@ -135,7 +142,6 @@ class PvPListenerTest {
     void onDeath_inOverworld_allItemsDropped() {
         PlayerDeathEvent event = createDeathEvent(killer);
         when(worldManager.isInOverworld(victim)).thenReturn(true);
-        when(playerDataManager.getOverworldDeposit(killerId)).thenReturn(1000.0);
 
         pvpListener.onPlayerDeath(event);
 
@@ -158,7 +164,8 @@ class PvPListenerTest {
     void onDeath_killerInOverworld_becomesWanted() {
         PlayerDeathEvent event = createDeathEvent(killer);
         when(worldManager.isInOverworld(victim)).thenReturn(true);
-        when(playerDataManager.getOverworldDeposit(killerId)).thenReturn(500.0);
+        // 懸賞金 = 被害者のデポジット額
+        when(playerDataManager.getOverworldDeposit(victimId)).thenReturn(500.0);
 
         pvpListener.onPlayerDeath(event);
 
@@ -171,7 +178,7 @@ class PvPListenerTest {
         when(worldManager.isInOverworld(victim)).thenReturn(true);
         when(wantedManager.isWanted(killerId)).thenReturn(true);
         when(wantedManager.getBounty(killerId)).thenReturn(800.0);
-        when(playerDataManager.getOverworldDeposit(killerId)).thenReturn(500.0);
+        // victimDeposit = 0 (グローバルモック) → 既存懸賞金800.0をそのまま使用
 
         pvpListener.onPlayerDeath(event);
 

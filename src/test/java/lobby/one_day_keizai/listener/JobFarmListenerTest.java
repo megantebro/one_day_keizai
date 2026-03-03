@@ -22,12 +22,14 @@ import static org.mockito.Mockito.*;
 class JobFarmListenerTest {
 
     private static final String SAFE_WORLD = "economy";
+    private static final String PVP_WORLD  = "world";
 
     @Mock private JobManager jobManager;
     @Mock private Player player;
     @Mock private BlockPlaceEvent event;
     @Mock private Block block;
-    @Mock private World world;
+    @Mock private World safeWorld;
+    @Mock private World pvpWorld;
 
     private JobFarmListener listener;
     private final UUID playerId = UUID.randomUUID();
@@ -38,8 +40,9 @@ class JobFarmListenerTest {
         lenient().when(player.getUniqueId()).thenReturn(playerId);
         lenient().when(event.getPlayer()).thenReturn(player);
         lenient().when(event.getBlockPlaced()).thenReturn(block);
-        lenient().when(player.getWorld()).thenReturn(world);
-        lenient().when(world.getName()).thenReturn(SAFE_WORLD);
+        lenient().when(block.getWorld()).thenReturn(safeWorld);
+        lenient().when(safeWorld.getName()).thenReturn(SAFE_WORLD);
+        lenient().when(pvpWorld.getName()).thenReturn(PVP_WORLD);
     }
 
     // --- 安全ワールドでの農作物制限 ---
@@ -85,16 +88,16 @@ class JobFarmListenerTest {
         verify(event).setCancelled(true);
     }
 
-    // --- どのワールドでも非農家は制限 ---
+    // --- オーバーワールドでは農作物の植え付けは自由（収穫制限との対称性）---
 
     @Test
-    void onBlockPlace_cropInOverworld_nonFarmer_stillCancels() {
+    void onBlockPlace_cropInOverworld_nonFarmer_notCancelled() {
+        when(block.getWorld()).thenReturn(pvpWorld);
         when(block.getType()).thenReturn(Material.WHEAT);
-        when(jobManager.isFarmer(playerId)).thenReturn(false);
 
         listener.onBlockPlace(event);
 
-        verify(event).setCancelled(true);
+        verify(event, never()).setCancelled(true);
     }
 
     // --- 木材・その他は制限なし ---

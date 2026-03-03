@@ -15,10 +15,13 @@ import org.bukkit.event.player.PlayerPortalEvent;
 
 public class WorldListener implements Listener {
 
-    /** PvPワールド名 */
-    private static final String PVP_WORLD = "world";
-    /** 経済ワールド名 */
-    private static final String ECONOMY_WORLD = "economy";
+    private final String pvpWorld;
+    private final String economyWorld;
+
+    public WorldListener(String pvpWorld, String economyWorld) {
+        this.pvpWorld     = pvpWorld;
+        this.economyWorld = economyWorld;
+    }
 
     @EventHandler
     public void onPlayerPortal(PlayerPortalEvent event) {
@@ -32,7 +35,7 @@ public class WorldListener implements Listener {
      */
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onMobSpawn(CreatureSpawnEvent event) {
-        if (!PVP_WORLD.equals(event.getLocation().getWorld().getName())) return;
+        if (!pvpWorld.equals(event.getLocation().getWorld().getName())) return;
 
         // 自然スポーン以外は許可
         CreatureSpawnEvent.SpawnReason reason = event.getSpawnReason();
@@ -53,7 +56,7 @@ public class WorldListener implements Listener {
      */
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onMobSpawnEconomy(CreatureSpawnEvent event) {
-        if (!ECONOMY_WORLD.equals(event.getLocation().getWorld().getName())) return;
+        if (!economyWorld.equals(event.getLocation().getWorld().getName())) return;
 
         // 自然スポーン以外は許可
         CreatureSpawnEvent.SpawnReason reason = event.getSpawnReason();
@@ -85,7 +88,7 @@ public class WorldListener implements Listener {
      */
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onPressurePlaceEconomy(BlockPlaceEvent event) {
-        if (!ECONOMY_WORLD.equals(event.getBlock().getWorld().getName())) return;
+        if (!economyWorld.equals(event.getBlock().getWorld().getName())) return;
         if (!event.getBlock().getType().name().contains("PRESSURE_PLATE")) return;
 
         event.setCancelled(true);

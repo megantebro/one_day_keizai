@@ -24,18 +24,17 @@ import org.bukkit.util.io.BukkitObjectOutputStream;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /**
  * 豪商（WEALTHY_MERCHANT）がロバのチェストを開くと、通常の15スロットではなく
  * 45スロットの仮想インベントリを表示する。
  * <p>
- * 拡張データはロバエンティティの PersistentDataContainer に保存されるため、
- * サーバー再起動後も保持される（ワールドが保存されている限り）。
- * <p>
- * ※ 豪商の仮想インベントリとロバの実際のチェストスロットは独立した空間。
- * 他の職業は通常の15スロットチェストを使用できる。
+ * 拡張データはロバエンティティの PersistentDataContainer に保存される。
+ * PDCはサーバーの通常自動セーブ時に永続化されるため world.save() は不要。
  */
 public class DonkeyChestListener implements Listener {
 
@@ -48,6 +47,12 @@ public class DonkeyChestListener implements Listener {
 
     /** 豪商が仮想インベントリを開いている間、プレイヤーUUID → ロバ のマッピングを保持 */
     private final Map<UUID, ChestedHorse> openingDonkeys = new HashMap<>();
+
+    /**
+     * 現在誰かが開いているロバのEntityUUID。
+     * 同一ロバを複数人が同時に開くことによるアイテム消失を防ぐ。
+     */
+    private final Set<UUID> lockedHorses = new HashSet<>();
 
     public DonkeyChestListener(JavaPlugin plugin, JobManager jobManager) {
         this.plugin = plugin;
@@ -70,6 +75,14 @@ public class DonkeyChestListener implements Listener {
         // 豪商のみ拡張インベントリを使用
         if (!jobManager.isWealthyMerchant(player.getUniqueId())) return;
 
+        // 同じロバを別プレイヤーが既に開いている場合はブロック
+        UUID horseId = horse.getUniqueId();
+        if (lockedHorses.contains(horseId)) {
+            event.setCancelled(true);
+            player.sendMessage(ChatColor.RED + "このロバの荷車は別のプレイヤーが使用中です。");
+            return;
+        }
+
         // バニラのインベントリを開かせない
         event.setCancelled(true);
 
@@ -84,6 +97,7 @@ public class DonkeyChestListener implements Listener {
             ItemStack[] storedItems = loadItems(horse);
             customInv.setContents(storedItems);
 
+            lockedHorses.add(horseId);
             openingDonkeys.put(player.getUniqueId(), horse);
             player.openInventory(customInv);
         });
@@ -100,8 +114,14 @@ public class DonkeyChestListener implements Listener {
         ChestedHorse horse = openingDonkeys.remove(player.getUniqueId());
         if (horse == null || !horse.isValid()) return;
 
+        // ロックを解放
+        lockedHorses.remove(horse.getUniqueId());
+
         // 閉じたインベントリの内容をロバの PDC に保存
-        saveItems(horse, event.getInventory().getContents());
+        boolean saved = saveItems(player, horse, event.getInventory().getContents());
+        if (!saved) {
+            player.sendMessage(ChatColor.RED + "[エラー] 荷車のデータ保存に失敗しました！アイテムが消えた場合は運営に報告してください。");
+        }
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -111,7 +131,10 @@ public class DonkeyChestListener implements Listener {
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event) {
         // InventoryCloseEvent が先に発火するが念のためクリーンアップ
-        openingDonkeys.remove(event.getPlayer().getUniqueId());
+        ChestedHorse horse = openingDonkeys.remove(event.getPlayer().getUniqueId());
+        if (horse != null) {
+            lockedHorses.remove(horse.getUniqueId());
+        }
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -122,6 +145,8 @@ public class DonkeyChestListener implements Listener {
     public void onDonkeyDeath(EntityDeathEvent event) {
         if (!(event.getEntity() instanceof ChestedHorse horse)) return;
         if (!horse.isCarryingChest()) return;
+
+        lockedHorses.remove(horse.getUniqueId());
 
         ItemStack[] items = loadItems(horse);
         for (ItemStack item : items) {
@@ -147,13 +172,19 @@ public class DonkeyChestListener implements Listener {
         return deserializeItems(data);
     }
 
-    private void saveItems(ChestedHorse horse, ItemStack[] items) {
+    /**
+     * @return 保存成功したら true、シリアライズ失敗なら false
+     */
+    private boolean saveItems(Player player, ChestedHorse horse, ItemStack[] items) {
         byte[] data = serializeItems(items);
-        if (data.length == 0) return;
+        if (data.length == 0) {
+            // シリアライズ失敗 — 保存しない（既存データを壊さない）
+            return false;
+        }
         PersistentDataContainer pdc = horse.getPersistentDataContainer();
         pdc.set(pdcKey, PersistentDataType.BYTE_ARRAY, data);
-        // エンティティの変更を永続化するため force-update
-        horse.getWorld().save();
+        // PDC はサーバーの通常自動セーブで永続化される。world.save() は不要。
+        return true;
     }
 
     private byte[] serializeItems(ItemStack[] items) {

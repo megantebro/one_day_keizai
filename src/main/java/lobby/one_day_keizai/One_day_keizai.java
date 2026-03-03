@@ -121,7 +121,7 @@ public final class One_day_keizai extends JavaPlugin {
         Bukkit.getPluginManager().registerEvents(
                 new PlayerListener(logoutManager, nametagManager, worldManager, jobManager, compassManager, this), this);
         Bukkit.getPluginManager().registerEvents(new JobSelectionListener(jobManager, nametagManager), this);
-        Bukkit.getPluginManager().registerEvents(new WorldListener(), this);
+        Bukkit.getPluginManager().registerEvents(new WorldListener(overworldName, safeWorldName), this);
         Bukkit.getPluginManager().registerEvents(new WantedListener(worldManager, wantedManager), this);
         Bukkit.getPluginManager().registerEvents(new JobCraftListener(jobManager), this);
         JobFarmListener farmListener = new JobFarmListener(jobManager, safeWorldName, this);

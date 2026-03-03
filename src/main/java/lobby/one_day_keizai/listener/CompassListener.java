@@ -9,6 +9,7 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 
@@ -70,5 +71,11 @@ public class CompassListener implements Listener {
             wantedCompassUI.open(event.getPlayer());
         }
         // バニラコンパスはキャンセルのみ（WE無効化）
+    }
+
+    /** ログアウト時に lastClickTime エントリを削除してメモリリークを防ぐ */
+    @EventHandler
+    public void onPlayerQuit(PlayerQuitEvent event) {
+        lastClickTime.remove(event.getPlayer().getUniqueId());
     }
 }

@@ -68,6 +68,7 @@ public class WorldManager {
 
         economy.withdrawPlayer(player, entryFee);
         playerDataManager.setOverworldDeposit(player.getUniqueId(), entryFee);
+        playerDataManager.save(); // クラッシュ時のデポジット消失防止
 
         // スポーン付近50ブロック以内のランダム位置・上空30〜50ブロックにTP
         Location spawn = overworld.getSpawnLocation();
@@ -127,6 +128,7 @@ public class WorldManager {
             economy.depositPlayer(player, deposit);
         }
         playerDataManager.clearOverworldDeposit(playerId);
+        playerDataManager.save(); // クラッシュ時のデポジット二重返金防止
 
         player.teleport(safeWorld.getSpawnLocation());
         player.sendMessage(ChatColor.GREEN + "安全ワールドに帰還しました。");
@@ -144,6 +146,7 @@ public class WorldManager {
         UUID playerId = player.getUniqueId();
         double deposit = playerDataManager.getOverworldDeposit(playerId);
         playerDataManager.clearOverworldDeposit(playerId);
+        playerDataManager.save(); // クラッシュ時のデポジット二重没収防止
         diedInOverworld.add(playerId);
 
         if (deposit > 0) {

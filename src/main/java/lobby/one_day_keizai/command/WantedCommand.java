@@ -52,6 +52,10 @@ public class WantedCommand implements CommandExecutor, TabCompleter {
                 if (args.length >= 3) {
                     try {
                         bounty = Double.parseDouble(args[2]);
+                        if (bounty <= 0) {
+                            sender.sendMessage(ChatColor.RED + "懸賞金は1以上の値を指定してください。");
+                            return true;
+                        }
                     } catch (NumberFormatException e) {
                         sender.sendMessage(ChatColor.RED + "懸賞金は数値で指定してください。");
                         return true;

@@ -45,7 +45,7 @@ public enum Job {
 
     /**
      * 基本職からその上級職を返す。
-     * 現在は鍛冶屋 → エンチャンターのみ昇格可能。
+     * 全基本職（農家・鍛冶屋・商人）が上級職へ昇格可能。
      */
     public Job getUpperJob() {
         return switch (this) {

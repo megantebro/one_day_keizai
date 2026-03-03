@@ -66,7 +66,11 @@ public class JobFarmListener implements Listener {
         Material.BAMBOO,
         Material.CACTUS,
         Material.MELON,
-        Material.PUMPKIN
+        Material.PUMPKIN,
+        Material.TORCHFLOWER_CROP,
+        Material.TORCHFLOWER,
+        Material.PITCHER_CROP,
+        Material.PITCHER_PLANT
     );
 
     public JobFarmListener(JobManager jobManager, String safeWorldName, JavaPlugin plugin) {
@@ -82,6 +86,10 @@ public class JobFarmListener implements Listener {
         Player player = event.getPlayer();
         Material placed = event.getBlockPlaced().getType();
         if (placed == null || !FARMER_ONLY_CROPS.contains(placed)) return;
+
+        // 安全ワールド（空島）のみ制限。オーバーワールドは自由（収穫制限と対称）
+        if (!event.getBlockPlaced().getWorld().getName().equals(safeWorldName)) return;
+        if (player.isOp()) return;
 
         if (!jobManager.isFarmer(player.getUniqueId())) {
             event.setCancelled(true);

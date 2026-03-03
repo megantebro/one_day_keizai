@@ -2,6 +2,7 @@ package lobby.one_day_keizai.manager;
 
 import lobby.one_day_keizai.TestHelper;
 import net.milkbowl.vault.economy.Economy;
+import net.milkbowl.vault.economy.EconomyResponse;
 import org.bukkit.Material;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.Server;
@@ -53,6 +54,9 @@ class AuctionManagerTest {
         when(plugin.getConfig()).thenReturn(config);
         when(config.getList("auction-items")).thenReturn(null);
         lenient().when(plugin.getLogger()).thenReturn(Logger.getLogger("test"));
+        // withdrawPlayer は常に成功を返す（デフォルト）
+        lenient().when(economy.withdrawPlayer(any(org.bukkit.OfflinePlayer.class), anyDouble()))
+                .thenReturn(new EconomyResponse(0, 0, EconomyResponse.ResponseType.SUCCESS, ""));
         auctionManager = new AuctionManager(plugin, economy, 30, 120);
     }
 

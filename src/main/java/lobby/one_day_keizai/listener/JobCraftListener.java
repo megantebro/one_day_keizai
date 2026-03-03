@@ -60,24 +60,24 @@ public class JobCraftListener implements Listener {
         ItemStack result = event.getInventory().getResult();
         if (result == null || result.getType() == Material.AIR) return;
 
+        // ビューアー全員を確認し、1人でも許可された職業がいれば結果を表示する。
+        // （非職業プレイヤーが同じ作業台を覗いても鍛冶屋のUIを壊さないための修正）
+        // 実際のクラフト実行は onCraftItem で再チェックするため不正クラフトは防止済み。
+
+        boolean anyBlacksmith = false;
+        boolean anyFarmer = false;
         for (HumanEntity viewer : event.getViewers()) {
-            if (!(viewer instanceof Player player)) continue;
+            if (!(viewer instanceof Player p)) continue;
+            if (jobManager.isBlacksmith(p.getUniqueId())) anyBlacksmith = true;
+            if (jobManager.isFarmer(p.getUniqueId())) anyFarmer = true;
+        }
 
-            // 鍛冶屋専用チェック
-            if (BLACKSMITH_ONLY_ITEMS.contains(result.getType())) {
-                if (!jobManager.isBlacksmith(player.getUniqueId())) {
-                    event.getInventory().setResult(new ItemStack(Material.AIR));
-                    return;
-                }
-            }
+        if (BLACKSMITH_ONLY_ITEMS.contains(result.getType()) && !anyBlacksmith) {
+            event.getInventory().setResult(new ItemStack(Material.AIR));
+        }
 
-            // 農家専用チェック: エンチャント瓶（バニラにはクラフトレシピなし）
-            if (result.getType() == Material.EXPERIENCE_BOTTLE) {
-                if (!jobManager.isFarmer(player.getUniqueId())) {
-                    event.getInventory().setResult(new ItemStack(Material.AIR));
-                    return;
-                }
-            }
+        if (result.getType() == Material.EXPERIENCE_BOTTLE && !anyFarmer) {
+            event.getInventory().setResult(new ItemStack(Material.AIR));
         }
     }
 

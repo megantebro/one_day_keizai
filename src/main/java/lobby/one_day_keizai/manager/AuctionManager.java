@@ -288,8 +288,15 @@ public class AuctionManager {
         String winnerName = winner != null ? winner.getName() :
                 Bukkit.getOfflinePlayer(winnerId).getName();
 
-        // お金を引き落とし
-        economy.withdrawPlayer(Bukkit.getOfflinePlayer(winnerId), winningBid);
+        // お金を引き落とし（失敗時はアイテム付与しない）
+        net.milkbowl.vault.economy.EconomyResponse resp =
+                economy.withdrawPlayer(Bukkit.getOfflinePlayer(winnerId), winningBid);
+        if (!resp.transactionSuccess()) {
+            Bukkit.broadcastMessage(ChatColor.YELLOW + "  オークション終了 — 決済失敗（残高不足）により落札者なし");
+            currentItem = null;
+            currentItemName = null;
+            return;
+        }
 
         // アイテム付与
         if (winner != null && winner.isOnline()) {

@@ -23,7 +23,7 @@ public class BalanceCommand implements CommandExecutor {
         }
 
         double balance = economy.getBalance(player);
-        player.sendMessage(ChatColor.GOLD + "所持金: " + String.format("%.0f", balance));
+        player.sendMessage(ChatColor.GOLD + "所持金: " + (long) balance + "円");
         return true;
     }
 }

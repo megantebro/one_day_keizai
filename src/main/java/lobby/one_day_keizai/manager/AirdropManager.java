@@ -2,11 +2,15 @@ package lobby.one_day_keizai.manager;
 
 import org.bukkit.*;
 import org.bukkit.block.Block;
-import org.bukkit.block.Chest;
+import org.bukkit.boss.BarColor;
+import org.bukkit.boss.BarStyle;
+import org.bukkit.boss.BossBar;
 import org.bukkit.entity.Firework;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.FireworkMeta;
+import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
@@ -17,20 +21,30 @@ import java.util.*;
 /**
  * エアドロップシステム。
  * - 定期的にPvPワールドのランダム座標にクレート（チェスト）を落下させる
- * - クレートを確保したプレイヤーは脱出するまで発光（Glowing）が付与される
- * - 脱出（安全ワールドへの移動）で発光が解除される
+ * - 開錠には「エアドロップの鍵」が必要
+ * - 開錠に5分かかる（BossBarでカウントダウン）
+ * - 開錠中にチェストから離れるか死亡するとキャンセル
+ * - 開錠成功後、安全ワールドへ脱出するまで発光が続く
  */
 public class AirdropManager {
 
+    /** 開錠にかかる時間（tick） = 5分 */
+    private static final int OPEN_TICKS = 6000;
+    /** チェストから離れられる最大距離（ブロック） */
+    private static final int MAX_DISTANCE = 5;
+
     private final JavaPlugin plugin;
     private final WorldManager worldManager;
+    private final NamespacedKey airdropKeyTag;
 
-    /** Location丸め比較のため、ブロック座標でキー管理 */
+    /** アクティブなクレートの場所 (locationKey -> Location) */
     private final Map<String, Location> activeCrates = new HashMap<>();
-    /** クレートを確保中のプレイヤーUUID（脱出で解除） */
+    /** クレートを確保済みで脱出前のプレイヤー */
     private final Set<UUID> securedPlayers = new HashSet<>();
-    /** クレート毎の花火タスク */
+    /** クレート位置表示用の花火タスク */
     private final Map<String, BukkitTask> fireworkTasks = new HashMap<>();
+    /** 現在開錠中のセッション (locationKey -> OpenSession) */
+    private final Map<String, OpenSession> openingSessions = new HashMap<>();
 
     private final int intervalTicks;
     private final int warningTicks;
@@ -40,28 +54,56 @@ public class AirdropManager {
     public AirdropManager(JavaPlugin plugin, WorldManager worldManager,
                           int intervalMinutes, int warningSeconds, int spawnRange,
                           List<ItemStack> crateItems) {
-        this.plugin       = plugin;
-        this.worldManager = worldManager;
+        this.plugin        = plugin;
+        this.worldManager  = worldManager;
+        this.airdropKeyTag = new NamespacedKey(plugin, "airdrop_key");
         this.intervalTicks = intervalMinutes * 60 * 20;
         this.warningTicks  = warningSeconds * 20;
         this.spawnRange    = spawnRange;
         this.crateItems    = crateItems.isEmpty() ? defaultItems() : crateItems;
     }
 
-    // ─── スケジューラー ────────────────────────────────────────────
+    // ─── 鍵アイテム ──────────────────────────────────────────────────────────
+
+    /** エアドロップの鍵アイテムを生成する */
+    public ItemStack createKey() {
+        ItemStack key = new ItemStack(Material.TRIPWIRE_HOOK);
+        ItemMeta meta = key.getItemMeta();
+        meta.setDisplayName(ChatColor.GOLD + "エアドロップの鍵");
+        meta.setLore(List.of(
+                ChatColor.GRAY + "エアドロップクレートを開錠できる",
+                ChatColor.YELLOW + "⚠ 開錠には5分かかる",
+                ChatColor.GRAY + "チェストから離れると開錠がキャンセルされる"
+        ));
+        meta.getPersistentDataContainer().set(airdropKeyTag, PersistentDataType.BYTE, (byte) 1);
+        key.setItemMeta(meta);
+        return key;
+    }
+
+    /** アイテムがエアドロップの鍵かどうかを判定する */
+    public boolean isAirdropKey(ItemStack item) {
+        if (item == null || item.getType() != Material.TRIPWIRE_HOOK) return false;
+        if (!item.hasItemMeta()) return false;
+        return item.getItemMeta().getPersistentDataContainer()
+                .has(airdropKeyTag, PersistentDataType.BYTE);
+    }
+
+    // ─── スケジューラー ────────────────────────────────────────────────────
 
     public void startScheduler() {
         Bukkit.getScheduler().runTaskTimer(plugin, this::scheduleDrop, intervalTicks, intervalTicks);
     }
 
     private void scheduleDrop() {
-        // 予告アナウンス
         Bukkit.broadcastMessage(ChatColor.GOLD + "" + ChatColor.BOLD
                 + "【エアドロップ】" + ChatColor.RESET + ChatColor.YELLOW
                 + " まもなく補給物資が投下されます！準備してください！");
+        Bukkit.getScheduler().runTaskLater(plugin, this::spawnRandom, warningTicks);
+    }
 
-        // warningTicks 後に実際にドロップ
-        Bukkit.getScheduler().runTaskLater(plugin, this::executeDrop, warningTicks);
+    /** OP コマンドから手動でランダム座標にドロップする */
+    public void spawnRandom() {
+        executeDrop();
     }
 
     private void executeDrop() {
@@ -70,34 +112,24 @@ public class AirdropManager {
 
         Location spawn = pvpWorld.getSpawnLocation();
         Random rng = new Random();
-
-        // ランダム座標を決定（スポーンから50〜spawnRangeブロック）
         double angle    = rng.nextDouble() * 2 * Math.PI;
         double distance = 50 + rng.nextDouble() * (spawnRange - 50);
         int x = (int)(spawn.getX() + Math.cos(angle) * distance);
         int z = (int)(spawn.getZ() + Math.sin(angle) * distance);
         int y = pvpWorld.getHighestBlockYAt(x, z) + 1;
 
-        Location loc = new Location(pvpWorld, x, y, z);
-        dropCrate(loc);
+        dropCrate(new Location(pvpWorld, x, y, z));
     }
 
-    // ─── クレート設置 ─────────────────────────────────────────────
+    // ─── クレート設置 ─────────────────────────────────────────────────────
 
+    /** 指定座標にクレートを設置し、全体にアナウンスする */
     public void dropCrate(Location loc) {
         World world = loc.getWorld();
         if (world == null) return;
 
-        // チェストブロックを設置
         Block block = loc.getBlock();
         block.setType(Material.CHEST);
-
-        // チェストにアイテムを格納
-        if (block.getState() instanceof Chest chest) {
-            for (int i = 0; i < Math.min(crateItems.size(), chest.getInventory().getSize()); i++) {
-                chest.getInventory().setItem(i, crateItems.get(i).clone());
-            }
-        }
 
         String key = locationKey(loc);
         activeCrates.put(key, loc.clone());
@@ -105,46 +137,165 @@ public class AirdropManager {
         // アナウンス
         Bukkit.broadcastMessage("");
         Bukkit.broadcastMessage(ChatColor.GOLD + "╔══════════════════════════╗");
-        Bukkit.broadcastMessage(ChatColor.GOLD + "  " + ChatColor.RED + ChatColor.BOLD
-                + "★ エアドロップ投下！ ★");
+        Bukkit.broadcastMessage(ChatColor.GOLD + "  " + ChatColor.RED + ChatColor.BOLD + "★ エアドロップ投下！ ★");
         Bukkit.broadcastMessage(ChatColor.GOLD + "  " + ChatColor.WHITE + "座標: "
-                + ChatColor.AQUA + "X:" + loc.getBlockX()
-                + " Y:" + loc.getBlockY()
-                + " Z:" + loc.getBlockZ());
-        Bukkit.broadcastMessage(ChatColor.GOLD + "  " + ChatColor.YELLOW
-                + "クレートを確保すると発光します！");
+                + ChatColor.AQUA + "X:" + loc.getBlockX() + " Y:" + loc.getBlockY() + " Z:" + loc.getBlockZ());
+        Bukkit.broadcastMessage(ChatColor.GOLD + "  " + ChatColor.YELLOW + "鍵を持って右クリック！開錠に5分かかる！");
         Bukkit.broadcastMessage(ChatColor.GOLD + "╚══════════════════════════╝");
         Bukkit.broadcastMessage("");
 
-        // 着地エフェクト
+        // 着地SE・エフェクト
         world.playSound(loc, Sound.ENTITY_GENERIC_EXPLODE, 1.5f, 0.5f);
         world.spawnParticle(Particle.EXPLOSION_LARGE, loc.clone().add(0.5, 1, 0.5), 5);
 
-        // 花火を30秒ごとに打ち上げて位置を知らせる
+        // 30秒ごとに花火を上げて位置を知らせる
         BukkitTask task = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
             if (!activeCrates.containsKey(key)) return;
-            Location center = loc.clone().add(0.5, 0, 0.5);
-            spawnSignalFirework(center);
-        }, 0L, 600L); // 30秒ごと
-
+            spawnSignalFirework(loc.clone().add(0.5, 0, 0.5));
+        }, 0L, 600L);
         fireworkTasks.put(key, task);
 
         // 10分経過で消滅
         Bukkit.getScheduler().runTaskLater(plugin, () -> expireCrate(key), 20L * 60 * 10);
     }
 
-    // ─── クレート確保 ─────────────────────────────────────────────
+    // ─── 開錠ロジック ────────────────────────────────────────────────────
 
     /**
-     * プレイヤーがチェストブロックを開いた時に呼ぶ。
-     * @return アイドロップクレートだったら true
+     * プレイヤーがクレートを右クリックした時に呼ぶ。
+     * @param player 右クリックしたプレイヤー
+     * @param loc    クリックされたブロックの座標
+     * @param handItem 手持ちアイテム（鍵かどうか確認する）
+     * @return このブロックがエアドロップクレートだった場合 true（鍵の有無に関わらず）
      */
-    public boolean trySecure(Player player, Location loc) {
-        String key = locationKey(loc);
-        if (!activeCrates.containsKey(key)) return false;
+    public boolean tryStartOpening(Player player, Location loc, ItemStack handItem) {
+        String crateKey = locationKey(loc);
+        if (!activeCrates.containsKey(crateKey)) return false;
 
-        activeCrates.remove(key);
-        stopFirework(key);
+        // 鍵を持っていない
+        if (!isAirdropKey(handItem)) {
+            player.sendMessage(ChatColor.RED + "このチェストを開けるには "
+                    + ChatColor.GOLD + "エアドロップの鍵" + ChatColor.RED + " が必要です。");
+            return true;
+        }
+
+        // すでに誰かが開錠中
+        if (openingSessions.containsKey(crateKey)) {
+            OpenSession existing = openingSessions.get(crateKey);
+            if (existing.player.equals(player)) {
+                player.sendMessage(ChatColor.YELLOW + "すでに開錠中です...");
+            } else {
+                player.sendMessage(ChatColor.RED + existing.player.getName() + " がすでに開錠中です！妨害しよう！");
+            }
+            return true;
+        }
+
+        // このプレイヤーが別のクレートを開錠中
+        for (OpenSession s : openingSessions.values()) {
+            if (s.player.equals(player)) {
+                player.sendMessage(ChatColor.RED + "すでに別のクレートを開錠中です。");
+                return true;
+            }
+        }
+
+        // 鍵を消費
+        handItem.setAmount(handItem.getAmount() - 1);
+
+        // BossBar 作成
+        BossBar bar = Bukkit.createBossBar(
+                ChatColor.GOLD + "開錠中... 5:00",
+                BarColor.YELLOW,
+                BarStyle.SEGMENTED_10
+        );
+        bar.addPlayer(player);
+        bar.setProgress(1.0);
+
+        OpenSession session = new OpenSession(player, crateKey, bar);
+        openingSessions.put(crateKey, session);
+
+        // アナウンス
+        player.sendMessage(ChatColor.GOLD + "開錠を開始しました。チェストから "
+                + MAX_DISTANCE + " ブロック以内にいてください。（5分）");
+        Bukkit.broadcastMessage(ChatColor.YELLOW + "【エアドロップ】" + ChatColor.WHITE
+                + " " + player.getName() + " がクレートの開錠を開始！妨害するなら今だ！");
+
+        // カウントダウンタスク起動
+        Location crateLoc = activeCrates.get(crateKey);
+        BukkitTask[] taskRef = {null};
+        taskRef[0] = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+            session.ticksLeft--;
+
+            // プレイヤーのオンライン確認
+            if (!player.isOnline()) {
+                cancelOpening(crateKey, null);
+                return;
+            }
+
+            // ワールド離脱チェック
+            if (player.getWorld() == null
+                    || !player.getWorld().getName().equals(worldManager.getOverworldName())) {
+                cancelOpening(crateKey, "ワールドを離れたため、開錠がキャンセルされました。");
+                return;
+            }
+
+            // 距離チェック
+            if (player.getLocation().distanceSquared(crateLoc)
+                    > (double) MAX_DISTANCE * MAX_DISTANCE) {
+                cancelOpening(crateKey, "チェストから離れすぎたため、開錠がキャンセルされました。");
+                return;
+            }
+
+            // BossBar 更新
+            double progress = (double) session.ticksLeft / OPEN_TICKS;
+            bar.setProgress(Math.max(0.0, progress));
+            int secondsLeft = session.ticksLeft / 20;
+            int min = secondsLeft / 60;
+            int sec = secondsLeft % 60;
+            bar.setTitle(ChatColor.GOLD + "開錠中... " + min + ":" + String.format("%02d", sec));
+
+            // 中間アナウンス（2分30秒時点）
+            if (session.ticksLeft == OPEN_TICKS / 2) {
+                Bukkit.broadcastMessage(ChatColor.YELLOW + "【エアドロップ】" + ChatColor.WHITE
+                        + " " + player.getName() + " の開錠まであと2分30秒！");
+            }
+
+            // 完了
+            if (session.ticksLeft <= 0) {
+                completeOpening(crateKey, crateLoc, player, bar);
+            }
+        }, 1L, 1L);
+
+        session.task = taskRef[0];
+        return true;
+    }
+
+    /** 開錠をキャンセルする */
+    private void cancelOpening(String crateKey, String message) {
+        OpenSession session = openingSessions.remove(crateKey);
+        if (session == null) return;
+        if (session.task != null) session.task.cancel();
+        session.bar.removeAll();
+        if (message != null && session.player.isOnline()) {
+            session.player.sendMessage(ChatColor.RED + message);
+        }
+        // 鍵は既に消費済み（返却なし）
+    }
+
+    /** 開錠完了処理 */
+    private void completeOpening(String crateKey, Location crateLoc, Player player, BossBar bar) {
+        openingSessions.remove(crateKey);
+        activeCrates.remove(crateKey);
+        stopFirework(crateKey);
+
+        if (bar != null) {
+            bar.setProgress(0.0);
+            bar.setTitle(ChatColor.GREEN + "開錠完了！");
+            // 少し遅延してから消す
+            Bukkit.getScheduler().runTaskLater(plugin, bar::removeAll, 40L);
+        }
+
+        // チェスト破壊
+        crateLoc.getBlock().setType(Material.AIR);
 
         // アイテム付与
         for (ItemStack item : crateItems) {
@@ -152,28 +303,23 @@ public class AirdropManager {
             leftover.values().forEach(l -> player.getWorld().dropItemNaturally(player.getLocation(), l));
         }
 
-        // チェストを破壊
-        loc.getBlock().setType(Material.AIR);
-
-        // 発光付与（脱出するまで継続）
+        // 発光付与（安全ワールドへ脱出するまで）
         securedPlayers.add(player.getUniqueId());
         player.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING,
                 Integer.MAX_VALUE, 0, false, false, true));
 
-        // アナウンス
+        player.sendMessage(ChatColor.GOLD + "✓ エアドロップクレートを開けました！安全ワールドに戻るまで発光します。");
         Bukkit.broadcastMessage(ChatColor.RED + "" + ChatColor.BOLD
-                + "【エアドロップ確保】" + ChatColor.RESET + ChatColor.WHITE
-                + " " + player.getName() + " がクレートを確保しました！"
-                + ChatColor.YELLOW + " 発光中 — 脱出を阻止せよ！");
+                + "【エアドロップ獲得！】" + ChatColor.RESET + ChatColor.WHITE
+                + " " + player.getName() + " がクレートを獲得！発光中 — 追え！");
 
-        // 効果音
         player.getWorld().playSound(player.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.0f, 1.0f);
-
-        player.sendMessage(ChatColor.GOLD + "クレートを確保しました！安全ワールドに戻るまで発光が続きます。");
-        return true;
+        spawnSignalFirework(crateLoc.clone().add(0.5, 0, 0.5));
     }
 
-    /** 安全ワールドに移動した時に発光を解除する */
+    // ─── 脱出・死亡 ──────────────────────────────────────────────────────
+
+    /** 安全ワールドへ移動した時に発光を解除する */
     public void onPlayerEscape(Player player) {
         if (!securedPlayers.remove(player.getUniqueId())) return;
         player.removePotionEffect(PotionEffectType.GLOWING);
@@ -182,17 +328,36 @@ public class AirdropManager {
                 + ChatColor.WHITE + " " + player.getName() + " が脱出しました！");
     }
 
-    /** プレイヤーが死亡した時も発光を解除する */
+    /** 死亡時に開錠キャンセル＆発光解除 */
     public void onPlayerDeath(Player player) {
-        if (!securedPlayers.remove(player.getUniqueId())) return;
-        player.removePotionEffect(PotionEffectType.GLOWING);
-        Bukkit.broadcastMessage(ChatColor.GRAY + "【エアドロップ】"
-                + ChatColor.WHITE + " " + player.getName() + " が撃破され、クレートの発光が解除されました。");
+        // 開錠中なら取り消す
+        String toCancelKey = null;
+        for (Map.Entry<String, OpenSession> e : openingSessions.entrySet()) {
+            if (e.getValue().player.equals(player)) {
+                toCancelKey = e.getKey();
+                break;
+            }
+        }
+        if (toCancelKey != null) {
+            cancelOpening(toCancelKey, "死亡したため、開錠がキャンセルされました。");
+        }
+
+        // 発光解除
+        if (securedPlayers.remove(player.getUniqueId())) {
+            player.removePotionEffect(PotionEffectType.GLOWING);
+            Bukkit.broadcastMessage(ChatColor.GRAY + "【エアドロップ】"
+                    + ChatColor.WHITE + " " + player.getName() + " が撃破されました。");
+        }
     }
 
-    // ─── 内部ユーティリティ ───────────────────────────────────────
+    // ─── 内部ユーティリティ ─────────────────────────────────────────────
 
     private void expireCrate(String key) {
+        // 開錠中セッションもキャンセル
+        if (openingSessions.containsKey(key)) {
+            cancelOpening(key, "クレートが消滅したため、開錠がキャンセルされました。");
+        }
+
         Location loc = activeCrates.remove(key);
         stopFirework(key);
         if (loc != null) {
@@ -222,7 +387,10 @@ public class AirdropManager {
     }
 
     private static String locationKey(Location loc) {
-        return loc.getWorld().getName() + ":" + loc.getBlockX() + ":" + loc.getBlockY() + ":" + loc.getBlockZ();
+        return loc.getWorld().getName() + ":"
+                + loc.getBlockX() + ":"
+                + loc.getBlockY() + ":"
+                + loc.getBlockZ();
     }
 
     private static List<ItemStack> defaultItems() {
@@ -236,11 +404,32 @@ public class AirdropManager {
         );
     }
 
+    /** この座標がアクティブなクレートかどうか */
+    public boolean isAirdropChest(Location loc) {
+        return activeCrates.containsKey(locationKey(loc));
+    }
+
     public boolean isSecured(UUID uuid) {
         return securedPlayers.contains(uuid);
     }
 
     public int getActiveCrateCount() {
         return activeCrates.size();
+    }
+
+    // ─── 内部クラス ──────────────────────────────────────────────────────
+
+    private static class OpenSession {
+        final Player player;
+        final String crateKey;
+        final BossBar bar;
+        BukkitTask task;
+        int ticksLeft = OPEN_TICKS;
+
+        OpenSession(Player player, String crateKey, BossBar bar) {
+            this.player   = player;
+            this.crateKey = crateKey;
+            this.bar      = bar;
+        }
     }
 }

@@ -39,6 +39,9 @@ commands:
   dirtrod:
     description: 無限の土の棒を渡す（OP専用）
     usage: /dirtrod [player]
+  airdrop:
+    description: エアドロップ管理（OP専用）
+    usage: /airdrop <spawn|key [player]>
 
 permissions:
   one_day_keizai.shop:

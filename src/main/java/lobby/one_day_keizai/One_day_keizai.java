@@ -1,6 +1,8 @@
 package lobby.one_day_keizai;
 
 import lobby.one_day_keizai.command.AuctionCommand;
+import lobby.one_day_keizai.listener.AirdropListener;
+import lobby.one_day_keizai.manager.AirdropManager;
 import lobby.one_day_keizai.command.FarmCommand;
 import lobby.one_day_keizai.command.CompassCommand;
 import lobby.one_day_keizai.command.WantedCommand;
@@ -54,6 +56,9 @@ public final class One_day_keizai extends JavaPlugin {
         int wantedDurationSeconds = getConfig().getInt("wanted-duration-seconds", 1800); // 30分
         int auctionIntervalMinutes = getConfig().getInt("auction-interval-minutes", 30);
         int auctionDurationSeconds = getConfig().getInt("auction-duration-seconds", 120);
+        int airdropIntervalMinutes = getConfig().getInt("airdrop-interval-minutes", 30);
+        int airdropWarnSeconds     = getConfig().getInt("airdrop-warn-seconds", 60);
+        int airdropSpawnRange      = getConfig().getInt("airdrop-spawn-range", 1000);
         String safeWorldName = getConfig().getString("safe-world-name", "economy");
         String overworldName = getConfig().getString("overworld-name", "world");
         // 入場料は動的計算（所持金の10%、上限2万）のためconfig不要
@@ -100,6 +105,11 @@ public final class One_day_keizai extends JavaPlugin {
                 this, economy, auctionIntervalMinutes, auctionDurationSeconds);
         BalanceScoreboardManager balanceScoreboardManager = new BalanceScoreboardManager(this, economy);
 
+        // エアドロップシステム
+        AirdropManager airdropManager = new AirdropManager(
+                this, worldManager, airdropIntervalMinutes, airdropWarnSeconds,
+                airdropSpawnRange, java.util.Collections.emptyList());
+
         // 株・投資システム
         double stockSellFee = getConfig().getDouble("stock-sell-fee", 0.20);
         double stockDividendRate = getConfig().getDouble("stock-dividend-rate", 0.01);
@@ -131,6 +141,7 @@ public final class One_day_keizai extends JavaPlugin {
         WantedCompassUI wantedCompassUI = new WantedCompassUI(wantedManager, this);
         Bukkit.getPluginManager().registerEvents(wantedCompassUI, this);
         Bukkit.getPluginManager().registerEvents(new CompassListener(compassManager, jobManager, wantedCompassUI), this);
+        Bukkit.getPluginManager().registerEvents(new AirdropListener(airdropManager, worldManager), this);
         Bukkit.getPluginManager().registerEvents(new LavaFlowListener(), this);
         InfiniteDirtListener infiniteDirtListener = new InfiniteDirtListener(this);
         Bukkit.getPluginManager().registerEvents(infiniteDirtListener, this);
@@ -181,6 +192,9 @@ public final class One_day_keizai extends JavaPlugin {
 
         // オークションスケジューラー開始
         auctionManager.startAuctionScheduler();
+
+        // エアドロップスケジューラー開始
+        airdropManager.startScheduler();
 
         // Balance Top スコアボード開始
         balanceScoreboardManager.startUpdater();

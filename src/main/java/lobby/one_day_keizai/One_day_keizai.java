@@ -58,7 +58,7 @@ public final class One_day_keizai extends JavaPlugin {
         int auctionIntervalMinutes = getConfig().getInt("auction-interval-minutes", 30);
         int auctionDurationSeconds = getConfig().getInt("auction-duration-seconds", 120);
         int airdropIntervalMinutes = getConfig().getInt("airdrop-interval-minutes", 30);
-        int airdropWarnSeconds     = getConfig().getInt("airdrop-warn-seconds", 60);
+        int airdropWarnSeconds     = getConfig().getInt("airdrop-warn-seconds", 600); // デフォルト10分
         int airdropSpawnRange      = getConfig().getInt("airdrop-spawn-range", 1000);
         String safeWorldName = getConfig().getString("safe-world-name", "economy");
         String overworldName = getConfig().getString("overworld-name", "world");

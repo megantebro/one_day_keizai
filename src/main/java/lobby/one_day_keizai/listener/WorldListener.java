@@ -11,6 +11,9 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.CreatureSpawnEvent;
+import org.bukkit.event.entity.EntityTransformEvent;
+import org.bukkit.event.entity.VillagerAcquireTradeEvent;
+import org.bukkit.event.entity.VillagerCareerChangeEvent;
 import org.bukkit.event.player.PlayerPortalEvent;
 
 public class WorldListener implements Listener {
@@ -94,6 +97,34 @@ public class WorldListener implements Listener {
         event.setCancelled(true);
         if (event.getPlayer() != null) {
             event.getPlayer().sendMessage(ChatColor.RED + "経済ワールドでは感圧板を設置できません。");
+        }
+    }
+
+    /**
+     * 村人の職業変更をキャンセルする（進化防止）。
+     * 職業獲得・喪失を禁止して固定状態を維持する。
+     */
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onVillagerCareerChange(VillagerCareerChangeEvent event) {
+        event.setCancelled(true);
+    }
+
+    /**
+     * 村人が新しいトレードを習得するのをキャンセルする（レベルアップ防止）。
+     */
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onVillagerAcquireTrade(VillagerAcquireTradeEvent event) {
+        event.setCancelled(true);
+    }
+
+    /**
+     * ゾンビ村人の治療による村人への変換をキャンセルする。
+     * 治療による格安トレード取得を防ぐ。
+     */
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onVillagerCure(EntityTransformEvent event) {
+        if (event.getTransformReason() == EntityTransformEvent.TransformReason.CURED) {
+            event.setCancelled(true);
         }
     }
 }

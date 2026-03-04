@@ -39,6 +39,8 @@ public class AirdropManager {
 
     /** アクティブなクレートの場所 (locationKey -> Location) */
     private final Map<String, Location> activeCrates = new HashMap<>();
+    /** 着地5分後に誰でも開けるようになったクレート */
+    private final Set<String> freeAccessCrates = new HashSet<>();
     /** クレートを確保済みで脱出前のプレイヤー */
     private final Set<UUID> securedPlayers = new HashSet<>();
     /** クレート位置表示用の花火タスク */
@@ -155,6 +157,25 @@ public class AirdropManager {
         }, 0L, 600L);
         fireworkTasks.put(key, task);
 
+        // 5分経過で誰でも開けるようになる
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (!activeCrates.containsKey(key)) return; // すでに開封済み・消滅済み
+            freeAccessCrates.add(key);
+            // 進行中の開錠セッションはキャンセル（フリーアクセスへ移行）
+            if (openingSessions.containsKey(key)) {
+                cancelOpening(key, "クレートがフリーアクセスになりました。誰でも開けます！");
+            }
+            Bukkit.broadcastMessage("");
+            Bukkit.broadcastMessage(ChatColor.AQUA + "【エアドロップ】" + ChatColor.WHITE
+                    + " クレートが " + ChatColor.YELLOW + ChatColor.BOLD + "フリーアクセス"
+                    + ChatColor.RESET + ChatColor.WHITE + " になりました！"
+                    + ChatColor.GRAY + " 鍵不要・誰でも開けます（残り5分）");
+            Bukkit.broadcastMessage(ChatColor.AQUA + "  座標: X:" + loc.getBlockX()
+                    + " Y:" + loc.getBlockY() + " Z:" + loc.getBlockZ());
+            Bukkit.broadcastMessage("");
+            world.playSound(loc, Sound.BLOCK_NOTE_BLOCK_PLING, 1.0f, 1.5f);
+        }, 20L * 60 * 5);
+
         // 10分経過で消滅
         Bukkit.getScheduler().runTaskLater(plugin, () -> expireCrate(key), 20L * 60 * 10);
     }
@@ -171,6 +192,13 @@ public class AirdropManager {
     public boolean tryStartOpening(Player player, Location loc, ItemStack handItem) {
         String crateKey = locationKey(loc);
         if (!activeCrates.containsKey(crateKey)) return false;
+
+        // ── フリーアクセス（着地5分後）: 鍵不要・即開封 ──
+        if (freeAccessCrates.contains(crateKey)) {
+            Location crateLoc = activeCrates.get(crateKey);
+            completeOpening(crateKey, crateLoc, player, null);
+            return true;
+        }
 
         // 鍵を持っていない
         if (!isAirdropKey(handItem)) {
@@ -285,6 +313,7 @@ public class AirdropManager {
     private void completeOpening(String crateKey, Location crateLoc, Player player, BossBar bar) {
         openingSessions.remove(crateKey);
         activeCrates.remove(crateKey);
+        freeAccessCrates.remove(crateKey);
         stopFirework(crateKey);
 
         if (bar != null) {
@@ -358,6 +387,7 @@ public class AirdropManager {
             cancelOpening(key, "クレートが消滅したため、開錠がキャンセルされました。");
         }
 
+        freeAccessCrates.remove(key);
         Location loc = activeCrates.remove(key);
         stopFirework(key);
         if (loc != null) {

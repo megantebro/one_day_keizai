@@ -12,8 +12,6 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.entity.EntityTransformEvent;
-import org.bukkit.event.entity.VillagerAcquireTradeEvent;
-import org.bukkit.event.entity.VillagerCareerChangeEvent;
 import org.bukkit.event.player.PlayerPortalEvent;
 
 public class WorldListener implements Listener {
@@ -101,27 +99,8 @@ public class WorldListener implements Listener {
     }
 
     /**
-     * 村人の職業変更をキャンセルする（進化防止）。
-     * 経済ワールドは許可。
-     */
-    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
-    public void onVillagerCareerChange(VillagerCareerChangeEvent event) {
-        if (economyWorld.equals(event.getEntity().getWorld().getName())) return;
-        event.setCancelled(true);
-    }
-
-    /**
-     * 村人が新しいトレードを習得するのをキャンセルする（レベルアップ防止）。
-     * 経済ワールドは許可。
-     */
-    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
-    public void onVillagerAcquireTrade(VillagerAcquireTradeEvent event) {
-        if (economyWorld.equals(event.getEntity().getWorld().getName())) return;
-        event.setCancelled(true);
-    }
-
-    /**
      * ゾンビ村人の治療による村人への変換をキャンセルする。
+     * （治療による格安トレード取得悪用を防ぐ）
      * 経済ワールドは許可。
      */
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)

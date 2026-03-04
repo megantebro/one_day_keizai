@@ -9,6 +9,9 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
+import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.block.BlockExplodeEvent;
+import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.player.PlayerChangedWorldEvent;
@@ -86,5 +89,31 @@ public class AirdropListener implements Listener {
     @EventHandler(priority = EventPriority.MONITOR)
     public void onPlayerDeath(PlayerDeathEvent event) {
         airdropManager.onPlayerDeath(event.getEntity());
+    }
+
+    /** クレートチェストの破壊を禁止 */
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onBlockBreak(BlockBreakEvent event) {
+        Block block = event.getBlock();
+        if (block.getType() != Material.CHEST) return;
+        if (!airdropManager.isAirdropChest(block.getLocation())) return;
+
+        event.setCancelled(true);
+        event.getPlayer().sendMessage(
+                org.bukkit.ChatColor.RED + "エアドロップクレートは破壊できません。");
+    }
+
+    /** 爆発によるクレートチェストの破壊を禁止 */
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onEntityExplode(EntityExplodeEvent event) {
+        event.blockList().removeIf(
+                b -> b.getType() == Material.CHEST && airdropManager.isAirdropChest(b.getLocation()));
+    }
+
+    /** ブロック爆発によるクレートチェストの破壊を禁止 */
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onBlockExplode(BlockExplodeEvent event) {
+        event.blockList().removeIf(
+                b -> b.getType() == Material.CHEST && airdropManager.isAirdropChest(b.getLocation()));
     }
 }

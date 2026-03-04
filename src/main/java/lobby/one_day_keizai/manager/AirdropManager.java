@@ -7,7 +7,9 @@ import org.bukkit.boss.BarStyle;
 import org.bukkit.boss.BossBar;
 import org.bukkit.entity.Firework;
 import org.bukkit.entity.Player;
+import org.bukkit.enchantments.Enchantment;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.EnchantmentStorageMeta;
 import org.bukkit.inventory.meta.FireworkMeta;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
@@ -424,14 +426,34 @@ public class AirdropManager {
     }
 
     private static List<ItemStack> defaultItems() {
-        return List.of(
-                new ItemStack(Material.DIAMOND, 5),
-                new ItemStack(Material.DIAMOND_SWORD),
-                new ItemStack(Material.GOLDEN_APPLE, 8),
-                new ItemStack(Material.DIAMOND_CHESTPLATE),
-                new ItemStack(Material.COOKED_BEEF, 32),
-                new ItemStack(Material.OBSIDIAN, 16)
-        );
+        List<ItemStack> items = new ArrayList<>();
+
+        items.add(new ItemStack(Material.DIAMOND, 5));
+        items.add(new ItemStack(Material.DIAMOND_BLOCK, 2));
+        items.add(new ItemStack(Material.GOLDEN_APPLE, 8));
+        items.add(new ItemStack(Material.DIAMOND_CHESTPLATE));
+        items.add(new ItemStack(Material.COOKED_BEEF, 32));
+        items.add(new ItemStack(Material.OBSIDIAN, 16));
+
+        // ダメージ軽減IV のエンチャント本
+        items.add(enchantedBook(Enchantment.PROTECTION_ENVIRONMENTAL, 4));
+        // 爆発耐性IV のエンチャント本
+        items.add(enchantedBook(Enchantment.PROTECTION_EXPLOSIONS, 4));
+        // 飛び道具耐性IV のエンチャント本
+        items.add(enchantedBook(Enchantment.PROTECTION_PROJECTILE, 4));
+
+        return items;
+    }
+
+    /** エンチャント本を生成する */
+    private static ItemStack enchantedBook(Enchantment enchant, int level) {
+        ItemStack book = new ItemStack(Material.ENCHANTED_BOOK);
+        EnchantmentStorageMeta meta = (EnchantmentStorageMeta) book.getItemMeta();
+        if (meta != null) {
+            meta.addStoredEnchant(enchant, level, true);
+            book.setItemMeta(meta);
+        }
+        return book;
     }
 
     /** この座標がアクティブなクレートかどうか */

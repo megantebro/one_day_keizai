@@ -435,12 +435,12 @@ public class AirdropManager {
         items.add(new ItemStack(Material.COOKED_BEEF, 32));
         items.add(new ItemStack(Material.OBSIDIAN, 16));
 
-        // ダメージ軽減IV のエンチャント本
-        items.add(enchantedBook(Enchantment.PROTECTION_ENVIRONMENTAL, 4));
-        // 爆発耐性IV のエンチャント本
-        items.add(enchantedBook(Enchantment.PROTECTION_EXPLOSIONS, 4));
-        // 飛び道具耐性IV のエンチャント本
-        items.add(enchantedBook(Enchantment.PROTECTION_PROJECTILE, 4));
+        // ダメージ軽減II のエンチャント本
+        items.add(enchantedBook(Enchantment.PROTECTION_ENVIRONMENTAL, 2));
+        // 爆発耐性II のエンチャント本
+        items.add(enchantedBook(Enchantment.PROTECTION_EXPLOSIONS, 2));
+        // 飛び道具耐性II のエンチャント本
+        items.add(enchantedBook(Enchantment.PROTECTION_PROJECTILE, 2));
 
         return items;
     }

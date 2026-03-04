@@ -64,7 +64,7 @@ public class AirdropManager {
         this.intervalTicks = intervalMinutes * 60 * 20;
         this.warningTicks  = warningSeconds * 20;
         this.spawnRange    = spawnRange;
-        this.crateItems    = crateItems.isEmpty() ? defaultItems() : crateItems;
+        this.crateItems    = new ArrayList<>(crateItems.isEmpty() ? defaultItems() : crateItems);
     }
 
     // ─── 鍵アイテム ──────────────────────────────────────────────────────────
@@ -454,6 +454,11 @@ public class AirdropManager {
             book.setItemMeta(meta);
         }
         return book;
+    }
+
+    /** クレートのルートにアイテムを追加する（初期化後に呼ぶ） */
+    public void addCrateItem(ItemStack item) {
+        crateItems.add(item);
     }
 
     /** この座標がアクティブなクレートかどうか */

@@ -122,6 +122,9 @@ public final class One_day_keizai extends JavaPlugin {
         // コンパスマネージャー（リスナー登録前に初期化）
         CompassManager compassManager = new CompassManager(this, wantedManager, worldManager);
         compassManager.startUpdateTask();
+
+        // マーダーコンパスをエアドロップのルートに追加
+        airdropManager.addCrateItem(compassManager.createMurderCompass());
         wantedManager.startSyncTask(); // ネームタグ状態を定期同期（フェイルセーフ）
         wantedManager.startUndergroundDamageTask(overworldName); // 地下逃げ込み対策
 

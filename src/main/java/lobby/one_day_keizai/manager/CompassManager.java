@@ -9,6 +9,8 @@ import org.bukkit.inventory.meta.CompassMeta;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
 
 import java.util.*;
@@ -31,6 +33,7 @@ public class CompassManager {
 
     public static final String TYPE_SHOP   = "shop";
     public static final String TYPE_WANTED = "wanted";
+    public static final String TYPE_MURDER = "murder";
 
     private final NamespacedKey compassTypeKey;
     private final JavaPlugin plugin;
@@ -211,6 +214,21 @@ public class CompassManager {
         return item;
     }
 
+    public ItemStack createMurderCompass() {
+        ItemStack item = new ItemStack(Material.COMPASS);
+        ItemMeta meta = item.getItemMeta();
+        meta.setDisplayName(ChatColor.DARK_RED + "" + ChatColor.BOLD + "マーダーコンパス");
+        meta.setLore(List.of(
+                ChatColor.GRAY + "最寄りのプレイヤーを追跡（Y≥0のみ対象）",
+                ChatColor.RED + "持っている間、自分が発光する",
+                ChatColor.DARK_RED + "Y=0以下に行くと毒II+盲目が付与される",
+                ChatColor.GOLD + "エアドロップ限定"
+        ));
+        meta.getPersistentDataContainer().set(compassTypeKey, PersistentDataType.STRING, TYPE_MURDER);
+        item.setItemMeta(meta);
+        return item;
+    }
+
     // ─── 種類判定 ────────────────────────────────────────────────
 
     public String getCompassType(ItemStack item) {
@@ -234,15 +252,17 @@ public class CompassManager {
     }
 
     private void updatePlayerCompass(Player player) {
-        boolean hasShop = false, hasWanted = false;
+        boolean hasShop = false, hasWanted = false, hasMurder = false;
         for (ItemStack item : player.getInventory().getContents()) {
             if (item == null || item.getType() != Material.COMPASS) continue;
             String type = getCompassType(item);
             if (TYPE_SHOP.equals(type))   hasShop = true;
             if (TYPE_WANTED.equals(type)) hasWanted = true;
+            if (TYPE_MURDER.equals(type)) hasMurder = true;
         }
         if (hasShop)   updateShopCompass(player);
         if (hasWanted) updateWantedCompass(player);
+        if (hasMurder) updateMurderCompass(player);
     }
 
     // ─── ショップコンパス更新（ロードストーン書き換え）────────────
@@ -311,6 +331,65 @@ public class CompassManager {
             player.sendActionBar(ChatColor.RED + "🎯 " + nearestTarget.getName()
                     + ChatColor.GRAY + "  ｜  Y: " + yStr
                     + ChatColor.GRAY + "  ｜  水平距離: " + ChatColor.YELLOW + horizDist + "m");
+        }
+    }
+
+    // ─── マーダーコンパス更新 ────────────────────────────────────
+
+    private void updateMurderCompass(Player player) {
+        boolean inMainHand = TYPE_MURDER.equals(getCompassType(player.getInventory().getItemInMainHand()));
+        Location pLoc = player.getLocation();
+
+        // 発光を付与（インベントリに持っている間は常に発光）
+        // 更新間隔0.5sに対し持続1sで、持ち続ける限り途切れない
+        player.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING, 20, 0, false, false, false));
+
+        // Y=0以下は毒II+盲目
+        if (pLoc.getY() < 0) {
+            player.addPotionEffect(new PotionEffect(PotionEffectType.POISON, 60, 1, false, true, true));
+            player.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 60, 0, false, true, true));
+        }
+
+        // 最寄りプレイヤー（Y≥0のみ対象）を探す
+        Location nearest = null;
+        Player nearestTarget = null;
+        double minDistSq = Double.MAX_VALUE;
+
+        for (Player target : Bukkit.getOnlinePlayers()) {
+            if (target.equals(player)) continue;
+            if (target.getWorld() == null
+                    || !target.getWorld().getName().equals(player.getWorld().getName())) continue;
+            if (target.getLocation().getY() < 0) continue; // Y<0のプレイヤーは対象外
+
+            double d = pLoc.distanceSquared(target.getLocation());
+            if (d < minDistSq) {
+                minDistSq = d;
+                nearest = target.getLocation().clone();
+                nearestTarget = target;
+            }
+        }
+
+        if (nearest == null) {
+            // 対象なし → スポーン方向へリセット
+            applyLodestoneToAll(player, TYPE_MURDER, player.getWorld().getSpawnLocation());
+            if (inMainHand) {
+                player.sendActionBar(ChatColor.DARK_RED + "🗡 " + ChatColor.GRAY + "近くにターゲットがいない");
+            }
+            return;
+        }
+
+        applyLodestoneToAll(player, TYPE_MURDER, nearest);
+
+        // メインハンドに持っている時のみアクションバー表示
+        if (inMainHand) {
+            int targetY = nearest.getBlockY();
+            double dx = nearest.getX() - pLoc.getX();
+            double dz = nearest.getZ() - pLoc.getZ();
+            int horizDist = (int) Math.sqrt(dx * dx + dz * dz);
+
+            player.sendActionBar(ChatColor.DARK_RED + "🗡 " + ChatColor.WHITE + nearestTarget.getName()
+                    + ChatColor.GRAY + "  ｜  Y: " + ChatColor.WHITE + targetY
+                    + ChatColor.GRAY + "  ｜  距離: " + ChatColor.YELLOW + horizDist + "m");
         }
     }
 }

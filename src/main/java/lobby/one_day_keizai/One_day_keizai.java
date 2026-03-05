@@ -149,6 +149,7 @@ public final class One_day_keizai extends JavaPlugin {
         Bukkit.getPluginManager().registerEvents(wantedCompassUI, this);
         Bukkit.getPluginManager().registerEvents(new CompassListener(compassManager, jobManager, wantedCompassUI), this);
         Bukkit.getPluginManager().registerEvents(new AirdropListener(airdropManager, worldManager), this);
+        Bukkit.getPluginManager().registerEvents(new AnvilListener(airdropManager.getNoRepairKey()), this);
         Bukkit.getPluginManager().registerEvents(new LavaFlowListener(), this);
         InfiniteDirtListener infiniteDirtListener = new InfiniteDirtListener(this);
         Bukkit.getPluginManager().registerEvents(infiniteDirtListener, this);

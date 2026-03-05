@@ -38,6 +38,7 @@ public class AirdropManager {
     private final JavaPlugin plugin;
     private final WorldManager worldManager;
     private final NamespacedKey airdropKeyTag;
+    private final NamespacedKey noRepairKey;
 
     /** アクティブなクレートの場所 (locationKey -> Location) */
     private final Map<String, Location> activeCrates = new HashMap<>();
@@ -61,10 +62,11 @@ public class AirdropManager {
         this.plugin        = plugin;
         this.worldManager  = worldManager;
         this.airdropKeyTag = new NamespacedKey(plugin, "airdrop_key");
+        this.noRepairKey   = new NamespacedKey(plugin, "no_repair");
         this.intervalTicks = intervalMinutes * 60 * 20;
         this.warningTicks  = warningSeconds * 20;
         this.spawnRange    = spawnRange;
-        this.crateItems    = new ArrayList<>(crateItems.isEmpty() ? defaultItems() : crateItems);
+        this.crateItems    = new ArrayList<>(crateItems.isEmpty() ? buildDefaultItems() : crateItems);
     }
 
     // ─── 鍵アイテム ──────────────────────────────────────────────────────────
@@ -425,7 +427,7 @@ public class AirdropManager {
                 + loc.getBlockZ();
     }
 
-    private static List<ItemStack> defaultItems() {
+    private List<ItemStack> buildDefaultItems() {
         List<ItemStack> items = new ArrayList<>();
 
         items.add(new ItemStack(Material.DIAMOND, 5));
@@ -435,14 +437,37 @@ public class AirdropManager {
         items.add(new ItemStack(Material.COOKED_BEEF, 32));
         items.add(new ItemStack(Material.OBSIDIAN, 16));
 
-        // ダメージ軽減II のエンチャント本
-        items.add(enchantedBook(Enchantment.PROTECTION_ENVIRONMENTAL, 2));
+        // 壊れかけダイヤツルハシ（修繕不可・耐久10）
+        items.add(createBrokenPickaxe());
         // 爆発耐性II のエンチャント本
         items.add(enchantedBook(Enchantment.PROTECTION_EXPLOSIONS, 2));
         // 飛び道具耐性II のエンチャント本
         items.add(enchantedBook(Enchantment.PROTECTION_PROJECTILE, 2));
 
         return items;
+    }
+
+    /** 耐久10・修繕不可のダイヤツルハシを生成する */
+    public ItemStack createBrokenPickaxe() {
+        ItemStack pick = new ItemStack(Material.DIAMOND_PICKAXE);
+        org.bukkit.inventory.meta.Damageable meta =
+                (org.bukkit.inventory.meta.Damageable) pick.getItemMeta();
+        meta.setDamage(Material.DIAMOND_PICKAXE.getMaxDurability() - 10); // 残り耐久 = 10
+        ((ItemMeta) meta).setDisplayName(ChatColor.GOLD + "壊れかけのダイヤツルハシ");
+        ((ItemMeta) meta).setLore(List.of(
+                ChatColor.RED   + "✘ 金床での修繕不可",
+                ChatColor.GRAY  + "残り耐久値: 10",
+                ChatColor.DARK_GRAY + "エアドロップ限定アイテム"
+        ));
+        ((ItemMeta) meta).getPersistentDataContainer()
+                .set(noRepairKey, PersistentDataType.BYTE, (byte) 1);
+        pick.setItemMeta((ItemMeta) meta);
+        return pick;
+    }
+
+    /** 修繕不可タグの NamespacedKey を返す（AnvilListener から参照） */
+    public NamespacedKey getNoRepairKey() {
+        return noRepairKey;
     }
 
     /** エンチャント本を生成する */

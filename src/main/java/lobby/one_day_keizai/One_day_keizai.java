@@ -204,6 +204,11 @@ public final class One_day_keizai extends JavaPlugin {
         WealthyExitCommand wealthyExitCommand = new WealthyExitCommand(this);
         getCommand("wealthyexit").setExecutor(wealthyExitCommand);
 
+        // スポーン帰還ビーコン開始
+        SpawnBeaconManager spawnBeaconManager = new SpawnBeaconManager(
+                this, worldManager, wantedManager, overworldName);
+        spawnBeaconManager.start();
+
         // 株配当スケジューラー開始
         stockManager.startDividendScheduler();
 

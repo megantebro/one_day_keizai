@@ -45,6 +45,9 @@ commands:
   wealthyenter:
     description: 豪商エリア入場チェック（コマンドブロック専用）
     usage: /wealthyenter <player|@p>
+  wealthyexit:
+    description: 豪商エリア退出（コマンドブロック専用）
+    usage: /wealthyexit <player|@p>
 
 permissions:
   one_day_keizai.shop:

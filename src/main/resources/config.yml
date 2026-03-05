@@ -82,3 +82,9 @@ wealthy-shop-y: 111.0
 wealthy-shop-z: -460.5
 wealthy-shop-yaw: 90.0
 wealthy-shop-pitch: 0.0
+# 豪商エリア退出TP先 (/wealthyexit コマンドで使用)
+wealthy-exit-x: -479.5
+wealthy-exit-y: 111.0
+wealthy-exit-z: -463.5
+wealthy-exit-yaw: 270.0
+wealthy-exit-pitch: 0.0

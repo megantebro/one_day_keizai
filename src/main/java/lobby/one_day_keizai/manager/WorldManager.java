@@ -77,23 +77,15 @@ public class WorldManager {
         playerDataManager.setOverworldDeposit(player.getUniqueId(), entryFee);
         playerDataManager.save(); // クラッシュ時のデポジット消失防止
 
-        // ランダムビーコン点の上空にTP（各点から±15ブロックXZ散らばり・上空50ブロック）
+        // スポーン付近50ブロック以内のランダム位置・上空30〜50ブロックにTP
+        Location spawn = overworld.getSpawnLocation();
         Random rng = new Random();
-        Location base;
-        if (spawnBeaconManager != null) {
-            // 帰還ビーコン9点からランダムに1点選択
-            base = spawnBeaconManager.getRandomEntryPoint(overworld, 50);
-        } else {
-            // フォールバック: スポーン付近
-            Location spawn = overworld.getSpawnLocation();
-            base = new Location(overworld, spawn.getX(), spawn.getY() + 50, spawn.getZ());
-        }
-        double scatterX = (rng.nextDouble() - 0.5) * 30; // ±15ブロック
-        double scatterZ = (rng.nextDouble() - 0.5) * 30;
-        double tpX = base.getX() + scatterX;
-        double tpZ = base.getZ() + scatterZ;
-        double tpY = Math.min(base.getY(), overworld.getMaxHeight() - 5);
-        Location tpLoc = new Location(overworld, tpX, tpY, tpZ, 0f, 30f);
+        double angle    = rng.nextDouble() * 2 * Math.PI;
+        double distance = 10 + rng.nextDouble() * 40;   // 10〜50ブロック
+        double tpX = spawn.getX() + Math.cos(angle) * distance;
+        double tpZ = spawn.getZ() + Math.sin(angle) * distance;
+        double tpY = Math.min(spawn.getY() + 30 + rng.nextDouble() * 20, overworld.getMaxHeight() - 5);
+        Location tpLoc = new Location(overworld, tpX, tpY, tpZ, spawn.getYaw(), 30f);
 
         // 出発エフェクト
         try {
@@ -106,8 +98,8 @@ public class WorldManager {
 
         player.teleport(tpLoc);
 
-        // 低速落下（15秒）・耐性III（20秒）
-        player.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_FALLING, 300, 0, false, true, true));
+        // 低速落下（8秒）・耐性III（20秒）
+        player.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_FALLING, 160, 0, false, true, true));
         player.addPotionEffect(new PotionEffect(PotionEffectType.DAMAGE_RESISTANCE, 400, 2, false, true, true));
 
         player.sendMessage(ChatColor.GREEN + "オーバーワールドに入場しました！上空から降下中……");

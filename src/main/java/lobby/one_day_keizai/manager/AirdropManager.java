@@ -436,6 +436,7 @@ public class AirdropManager {
         items.add(new ItemStack(Material.DIAMOND_CHESTPLATE));
         items.add(new ItemStack(Material.COOKED_BEEF, 32));
         items.add(new ItemStack(Material.OBSIDIAN, 16));
+        items.add(new ItemStack(Material.QUARTZ, 64));
 
         // 壊れかけダイヤツルハシ（修繕不可・耐久10）
         items.add(createBrokenPickaxe());

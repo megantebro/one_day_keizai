@@ -15,10 +15,10 @@ import java.util.*;
  * 帰還ビーコンを配置。各ビーコン点から10ブロック以内で20秒待機すると帰還。
  * 指名手配中は帰還不可。
  *
- * グリッド配置（スポーン中心、各 GRID_STEP=150 ブロック）:
- *   (-150,-150) (0,-150) (150,-150)
- *   (-150,  0 ) (0,  0 ) (150,  0 )  ← (0,0)がスポーン
- *   (-150, 150) (0, 150) (150, 150)
+ * グリッド配置（スポーン中心、各 GRID_STEP=300 ブロック）:
+ *   (-300,-300) (0,-300) (300,-300)
+ *   (-300,  0 ) (0,  0 ) (300,  0 )  ← (0,0)がスポーン
+ *   (-300, 300) (0, 300) (300, 300)
  */
 public class SpawnBeaconManager {
 
@@ -31,7 +31,7 @@ public class SpawnBeaconManager {
     /** パーティクル柱の高さ（ブロック） */
     private static final int PILLAR_HEIGHT = 60;
     /** グリッド間隔（ブロック） */
-    private static final int GRID_STEP = 150;
+    private static final int GRID_STEP = 300;
     /** グリッド半径（-1, 0, 1 の3点 × XZ） */
     private static final int GRID_RANGE = 1;
 

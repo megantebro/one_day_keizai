@@ -12,7 +12,9 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.entity.EntityTransformEvent;
+import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.player.PlayerPortalEvent;
+import org.bukkit.inventory.MerchantInventory;
 
 public class WorldListener implements Listener {
 
@@ -96,6 +98,19 @@ public class WorldListener implements Listener {
         if (event.getPlayer() != null) {
             event.getPlayer().sendMessage(ChatColor.RED + "経済ワールドでは感圧板を設置できません。");
         }
+    }
+
+    /**
+     * PvPワールド（overworld）では村人・行商人との取引を禁止する。
+     */
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onMerchantOpen(InventoryOpenEvent event) {
+        if (!(event.getPlayer() instanceof Player player)) return;
+        if (!pvpWorld.equals(player.getWorld().getName())) return;
+        if (!(event.getInventory() instanceof MerchantInventory)) return;
+
+        event.setCancelled(true);
+        player.sendMessage(ChatColor.RED + "オーバーワールドでは村人との取引はできません。");
     }
 
     /**

@@ -184,6 +184,22 @@ public class SpawnBeaconManager {
         }
     }
 
+    /**
+     * 9点の帰還ビーコンからランダムに1点を選び、
+     * 上空 skyOffset ブロック上の入場位置を返す。
+     * ビーコン点がまだ初期化されていない場合はその場で計算する。
+     */
+    public Location getRandomEntryPoint(World world, int skyOffset) {
+        List<Location> pts = beaconPoints;
+        if (pts == null || pts.isEmpty()) {
+            pts = buildBeaconPoints(world.getSpawnLocation());
+            // 初回入場時にキャッシュしておく
+            beaconPoints = pts;
+        }
+        Location base = pts.get(new Random().nextInt(pts.size()));
+        return new Location(world, base.getX(), base.getY() + skyOffset, base.getZ());
+    }
+
     private static void sendActionBar(Player player, String text) {
         player.spigot().sendMessage(ChatMessageType.ACTION_BAR, new TextComponent(text));
     }

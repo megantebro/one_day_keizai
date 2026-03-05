@@ -208,6 +208,7 @@ public final class One_day_keizai extends JavaPlugin {
         SpawnBeaconManager spawnBeaconManager = new SpawnBeaconManager(
                 this, worldManager, wantedManager, overworldName);
         spawnBeaconManager.start();
+        worldManager.setSpawnBeaconManager(spawnBeaconManager); // 入場TP先に帰還ビーコン点を使用
 
         // 株配当スケジューラー開始
         stockManager.startDividendScheduler();

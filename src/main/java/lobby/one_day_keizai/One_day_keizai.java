@@ -1,6 +1,7 @@
 package lobby.one_day_keizai;
 
 import lobby.one_day_keizai.command.AirdropCommand;
+import lobby.one_day_keizai.command.WealthyEnterCommand;
 import lobby.one_day_keizai.command.AuctionCommand;
 import lobby.one_day_keizai.listener.AirdropListener;
 import lobby.one_day_keizai.manager.AirdropManager;
@@ -194,6 +195,9 @@ public final class One_day_keizai extends JavaPlugin {
 
         AirdropCommand airdropCommand = new AirdropCommand(airdropManager);
         getCommand("airdrop").setExecutor(airdropCommand);
+
+        WealthyEnterCommand wealthyEnterCommand = new WealthyEnterCommand(this, jobManager);
+        getCommand("wealthyenter").setExecutor(wealthyEnterCommand);
 
         // 株配当スケジューラー開始
         stockManager.startDividendScheduler();

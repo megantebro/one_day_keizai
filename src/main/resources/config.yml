@@ -74,3 +74,11 @@ shops:
     x: -472
     y: 110
     z: -471
+
+# 豪商エリア入場TP先 (/wealthyenter コマンドで使用)
+wealthy-shop-world: "economy"
+wealthy-shop-x: -479.5
+wealthy-shop-y: 111.0
+wealthy-shop-z: -460.5
+wealthy-shop-yaw: 90.0
+wealthy-shop-pitch: 0.0

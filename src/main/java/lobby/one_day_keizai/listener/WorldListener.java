@@ -1,6 +1,7 @@
 package lobby.one_day_keizai.listener;
 
 import org.bukkit.ChatColor;
+import org.bukkit.entity.AbstractHorse;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Monster;
@@ -97,6 +98,17 @@ public class WorldListener implements Listener {
         event.setCancelled(true);
         if (event.getPlayer() != null) {
             event.getPlayer().sendMessage(ChatColor.RED + "経済ワールドでは感圧板を設置できません。");
+        }
+    }
+
+    /**
+     * 馬（AbstractHorse）はスポーン時点で自動テイム済みにする。
+     * どのプレイヤーでもそのまま乗れる。
+     */
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onHorseSpawn(CreatureSpawnEvent event) {
+        if (event.getEntity() instanceof AbstractHorse horse) {
+            horse.setTamed(true);
         }
     }
 

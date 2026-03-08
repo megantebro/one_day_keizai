@@ -51,7 +51,15 @@ public class OverworldCommand implements CommandExecutor, TabCompleter {
         }
 
         switch (args[0].toLowerCase()) {
-            case "enter" -> worldManager.enterOverworld(player);
+            case "enter" -> {
+                // コマンドブロックからの実行は感圧板を踏んでいる場合のみ許可
+                if (!(sender instanceof Player)) {
+                    org.bukkit.block.Block below = player.getLocation().getBlock()
+                            .getRelative(org.bukkit.block.BlockFace.DOWN);
+                    if (!below.getType().name().contains("PRESSURE_PLATE")) return true;
+                }
+                worldManager.enterOverworld(player);
+            }
             case "return" -> {
                 // 指名手配中は帰還禁止
                 if (wantedManager.isWanted(player.getUniqueId())) {

@@ -53,13 +53,13 @@ public class OverworldCommand implements CommandExecutor, TabCompleter {
         switch (args[0].toLowerCase()) {
             case "enter" -> {
                 // コマンドブロックからの実行は感圧板を踏んでいる場合のみ許可
-                // 感圧板は薄い（高さ1/16）ので足元Y・1つ下の両方をチェックして確実に検出する
+                // 感圧板の直下にコマンドブロックがある構造なので、
+                // プレイヤーの足元1つ下がコマンドブロックかどうかで判定する
                 if (!(sender instanceof Player)) {
                     org.bukkit.block.Block feet  = player.getLocation().getBlock();
                     org.bukkit.block.Block below = feet.getRelative(org.bukkit.block.BlockFace.DOWN);
-                    boolean onPlate = feet.getType().name().contains("PRESSURE_PLATE")
-                                   || below.getType().name().contains("PRESSURE_PLATE");
-                    if (!onPlate) return true;
+                    boolean onCommandBlock = below.getType().name().contains("COMMAND_BLOCK");
+                    if (!onCommandBlock) return true;
                 }
                 worldManager.enterOverworld(player);
             }

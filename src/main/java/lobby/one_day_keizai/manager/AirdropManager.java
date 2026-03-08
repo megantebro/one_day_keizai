@@ -322,24 +322,24 @@ public class AirdropManager {
         // チェスト破壊
         crateLoc.getBlock().setType(Material.AIR);
 
-        // アイテム付与（ランダムで3個）
+        // アイテムドロップ（ランダムで3個 → クレートがあった場所に排出）
         if (!crateItems.isEmpty()) {
             Random rng = new Random();
             List<ItemStack> pool = new ArrayList<>(crateItems);
             Collections.shuffle(pool, rng);
             int count = Math.min(3, pool.size());
             List<ItemStack> rewards = pool.subList(0, count);
+            Location dropLoc = crateLoc.clone().add(0.5, 1, 0.5);
             StringBuilder rewardNames = new StringBuilder();
             for (int i = 0; i < rewards.size(); i++) {
                 ItemStack item = rewards.get(i);
-                Map<Integer, ItemStack> leftover = player.getInventory().addItem(item.clone());
-                leftover.values().forEach(l -> player.getWorld().dropItemNaturally(player.getLocation(), l));
-                if (i > 0) rewardNames.append(ChatColor.WHITE + ", " + ChatColor.GOLD);
+                crateLoc.getWorld().dropItemNaturally(dropLoc, item.clone());
+                if (i > 0) rewardNames.append(ChatColor.WHITE).append(", ").append(ChatColor.GOLD);
                 rewardNames.append(item.hasItemMeta() && item.getItemMeta().hasDisplayName()
                         ? item.getItemMeta().getDisplayName()
                         : item.getType().name().toLowerCase().replace('_', ' '));
             }
-            player.sendMessage(ChatColor.YELLOW + "獲得アイテム: " + ChatColor.GOLD + rewardNames);
+            player.sendMessage(ChatColor.YELLOW + "クレートからアイテムが出現した！: " + ChatColor.GOLD + rewardNames);
         }
 
         // 発光付与（安全ワールドへ脱出するまで）

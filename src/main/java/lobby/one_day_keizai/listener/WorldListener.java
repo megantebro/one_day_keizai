@@ -10,6 +10,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.entity.EntityTransformEvent;
@@ -89,16 +90,29 @@ public class WorldListener implements Listener {
 
     /**
      * 経済ワールド（economy）では感圧板の設置を禁止する。
+     * OP は設置可能。
      */
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onPressurePlaceEconomy(BlockPlaceEvent event) {
         if (!economyWorld.equals(event.getBlock().getWorld().getName())) return;
         if (!event.getBlock().getType().name().contains("PRESSURE_PLATE")) return;
+        if (event.getPlayer().isOp()) return;
 
         event.setCancelled(true);
-        if (event.getPlayer() != null) {
-            event.getPlayer().sendMessage(ChatColor.RED + "経済ワールドでは感圧板を設置できません。");
-        }
+        event.getPlayer().sendMessage(ChatColor.RED + "経済ワールドでは感圧板を設置できません。");
+    }
+
+    /**
+     * 経済ワールド（economy）では感圧板の破壊を OP 以外に禁止する。
+     */
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onPressureBreakEconomy(BlockBreakEvent event) {
+        if (!economyWorld.equals(event.getBlock().getWorld().getName())) return;
+        if (!event.getBlock().getType().name().contains("PRESSURE_PLATE")) return;
+        if (event.getPlayer().isOp()) return;
+
+        event.setCancelled(true);
+        event.getPlayer().sendMessage(ChatColor.RED + "経済ワールドでは感圧板を破壊できません。");
     }
 
     /**

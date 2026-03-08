@@ -32,9 +32,6 @@ public class AirdropManager {
 
     /** 開錠にかかる時間（tick） = 5分 */
     private static final int OPEN_TICKS = 6000;
-    /** チェストから離れられる最大距離（ブロック） */
-    private static final int MAX_DISTANCE = 5;
-
     private final JavaPlugin plugin;
     private final WorldManager worldManager;
     private final NamespacedKey airdropKeyTag;
@@ -246,8 +243,7 @@ public class AirdropManager {
         openingSessions.put(crateKey, session);
 
         // アナウンス
-        player.sendMessage(ChatColor.GOLD + "開錠を開始しました。チェストから "
-                + MAX_DISTANCE + " ブロック以内にいてください。（5分）");
+        player.sendMessage(ChatColor.GOLD + "開錠を開始しました。（5分）");
         Bukkit.broadcastMessage(ChatColor.YELLOW + "【エアドロップ】" + ChatColor.WHITE
                 + " " + player.getName() + " がクレートの開錠を開始！妨害するなら今だ！");
 
@@ -267,13 +263,6 @@ public class AirdropManager {
             if (player.getWorld() == null
                     || !player.getWorld().getName().equals(worldManager.getOverworldName())) {
                 cancelOpening(crateKey, "ワールドを離れたため、開錠がキャンセルされました。");
-                return;
-            }
-
-            // 距離チェック
-            if (player.getLocation().distanceSquared(crateLoc)
-                    > (double) MAX_DISTANCE * MAX_DISTANCE) {
-                cancelOpening(crateKey, "チェストから離れすぎたため、開錠がキャンセルされました。");
                 return;
             }
 
@@ -330,10 +319,15 @@ public class AirdropManager {
         // チェスト破壊
         crateLoc.getBlock().setType(Material.AIR);
 
-        // アイテム付与
-        for (ItemStack item : crateItems) {
+        // アイテム付与（ランダムで1個）
+        if (!crateItems.isEmpty()) {
+            ItemStack item = crateItems.get(new Random().nextInt(crateItems.size()));
             Map<Integer, ItemStack> leftover = player.getInventory().addItem(item.clone());
             leftover.values().forEach(l -> player.getWorld().dropItemNaturally(player.getLocation(), l));
+            player.sendMessage(ChatColor.YELLOW + "獲得アイテム: " + ChatColor.GOLD
+                    + (item.hasItemMeta() && item.getItemMeta().hasDisplayName()
+                        ? item.getItemMeta().getDisplayName()
+                        : item.getType().name().toLowerCase().replace('_', ' ')));
         }
 
         // 発光付与（安全ワールドへ脱出するまで）

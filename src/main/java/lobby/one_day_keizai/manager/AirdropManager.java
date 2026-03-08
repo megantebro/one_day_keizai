@@ -98,6 +98,9 @@ public class AirdropManager {
     }
 
     private void scheduleDrop() {
+        // オンラインプレイヤーが3人未満の場合はスキップ
+        if (Bukkit.getOnlinePlayers().size() < 3) return;
+
         Bukkit.broadcastMessage(ChatColor.GOLD + "" + ChatColor.BOLD
                 + "【エアドロップ】" + ChatColor.RESET + ChatColor.YELLOW
                 + " まもなく補給物資が投下されます！準備してください！");
@@ -319,15 +322,24 @@ public class AirdropManager {
         // チェスト破壊
         crateLoc.getBlock().setType(Material.AIR);
 
-        // アイテム付与（ランダムで1個）
+        // アイテム付与（ランダムで3個）
         if (!crateItems.isEmpty()) {
-            ItemStack item = crateItems.get(new Random().nextInt(crateItems.size()));
-            Map<Integer, ItemStack> leftover = player.getInventory().addItem(item.clone());
-            leftover.values().forEach(l -> player.getWorld().dropItemNaturally(player.getLocation(), l));
-            player.sendMessage(ChatColor.YELLOW + "獲得アイテム: " + ChatColor.GOLD
-                    + (item.hasItemMeta() && item.getItemMeta().hasDisplayName()
+            Random rng = new Random();
+            List<ItemStack> pool = new ArrayList<>(crateItems);
+            Collections.shuffle(pool, rng);
+            int count = Math.min(3, pool.size());
+            List<ItemStack> rewards = pool.subList(0, count);
+            StringBuilder rewardNames = new StringBuilder();
+            for (int i = 0; i < rewards.size(); i++) {
+                ItemStack item = rewards.get(i);
+                Map<Integer, ItemStack> leftover = player.getInventory().addItem(item.clone());
+                leftover.values().forEach(l -> player.getWorld().dropItemNaturally(player.getLocation(), l));
+                if (i > 0) rewardNames.append(ChatColor.WHITE + ", " + ChatColor.GOLD);
+                rewardNames.append(item.hasItemMeta() && item.getItemMeta().hasDisplayName()
                         ? item.getItemMeta().getDisplayName()
-                        : item.getType().name().toLowerCase().replace('_', ' ')));
+                        : item.getType().name().toLowerCase().replace('_', ' '));
+            }
+            player.sendMessage(ChatColor.YELLOW + "獲得アイテム: " + ChatColor.GOLD + rewardNames);
         }
 
         // 発光付与（安全ワールドへ脱出するまで）

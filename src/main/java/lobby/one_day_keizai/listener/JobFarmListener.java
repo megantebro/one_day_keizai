@@ -25,15 +25,17 @@ public class JobFarmListener implements Listener {
     /** 自動植え直しをOFFにしているプレイヤーUUID（デフォルトON） */
     private final Set<UUID> autoReplantDisabled = new HashSet<>();
 
-    /** 農家専用の農作物ブロック一覧（設置・植え付けに使うアイテムのブロック形式） */
+    /**
+     * 農家専用の農作物ブロック一覧（BlockPlaceEvent で getBlockPlaced().getType() と照合するため
+     * 「置かれるブロック名」を使う。アイテム名（WHEAT_SEEDSなど）ではない）
+     */
     private static final Set<Material> FARMER_ONLY_CROPS = EnumSet.of(
-        Material.WHEAT,
-        Material.WHEAT_SEEDS,
-        Material.CARROTS,
-        Material.POTATOES,
-        Material.BEETROOT_SEEDS,
-        Material.MELON_SEEDS,
-        Material.PUMPKIN_SEEDS,
+        Material.WHEAT,           // 小麦の種 → WHEAT ブロック
+        Material.CARROTS,         // にんじん
+        Material.POTATOES,        // じゃがいも
+        Material.BEETROOTS,       // ビートルートの種 → BEETROOTS ブロック
+        Material.MELON_STEM,      // スイカの種 → MELON_STEM ブロック
+        Material.PUMPKIN_STEM,    // カボチャの種 → PUMPKIN_STEM ブロック
         Material.SWEET_BERRY_BUSH,
         Material.TORCHFLOWER_SEEDS,
         Material.PITCHER_POD,
@@ -111,26 +113,6 @@ public class JobFarmListener implements Listener {
         if (!jobManager.isFarmer(player.getUniqueId())) {
             event.setCancelled(true);
             player.sendMessage(ChatColor.RED + "骨粉の使用は農家のみ可能です。");
-        }
-    }
-
-    // ─── 農家以外の収穫禁止（安全ワールドのみ）──────────────────
-
-    @EventHandler(priority = EventPriority.HIGH)
-    public void onCropHarvest(BlockBreakEvent event) {
-        Block block = event.getBlock();
-        if (!HARVEST_ONLY_FARMER.contains(block.getType())) return;
-
-        // 安全ワールド（空島）のみ制限。オーバーワールドは自由
-        if (block.getWorld() == null) return;
-        if (!block.getWorld().getName().equals(safeWorldName)) return;
-
-        Player player = event.getPlayer();
-        if (player.isOp()) return;
-
-        if (!jobManager.isFarmer(player.getUniqueId())) {
-            event.setCancelled(true);
-            player.sendMessage(ChatColor.RED + "農作物の収穫は農家のみ可能です。");
         }
     }
 
